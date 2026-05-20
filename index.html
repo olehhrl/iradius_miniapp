@@ -51,7 +51,6 @@
             cursor: pointer;
         }
 
-        /* TABS */
         .tabs {
             display: flex;
             background: white;
@@ -73,7 +72,6 @@
         }
         .tab.active { color: #2E86AB; border-bottom-color: #2E86AB; }
 
-        /* CATEGORIES */
         .categories {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -94,7 +92,6 @@
         .category-card .icon { font-size: 32px; margin-bottom: 8px; }
         .category-card .name { font-size: 13px; font-weight: 600; color: #333; }
 
-        /* PRODUCTS */
         .products-grid {
             display: flex;
             flex-direction: column;
@@ -107,16 +104,34 @@
             padding: 14px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.07);
             display: flex;
-            justify-content: space-between;
             align-items: center;
             gap: 12px;
             cursor: pointer;
             transition: transform 0.1s;
         }
         .product-card:active { transform: scale(0.98); }
+        .product-img {
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+            border-radius: 8px;
+            flex-shrink: 0;
+            background: #f5f5f5;
+        }
+        .product-img-placeholder {
+            width: 70px;
+            height: 70px;
+            border-radius: 8px;
+            flex-shrink: 0;
+            background: #f0f4f7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
         .product-info { flex: 1; min-width: 0; }
         .product-name {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             color: #222;
             line-height: 1.3;
@@ -125,22 +140,18 @@
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
-        .product-sku { font-size: 12px; color: #999; margin-top: 3px; }
-        .product-presence {
-            font-size: 11px;
-            margin-top: 4px;
-            font-weight: 500;
-        }
+        .product-sku { font-size: 11px; color: #999; margin-top: 3px; }
+        .product-presence { font-size: 11px; margin-top: 4px; font-weight: 500; }
         .presence-available { color: #27ae60; }
         .presence-unavailable { color: #e74c3c; }
         .product-right { text-align: right; flex-shrink: 0; }
         .product-price {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 700;
             color: #2E86AB;
             white-space: nowrap;
         }
-        .product-price span { font-size: 12px; font-weight: 400; }
+        .product-price span { font-size: 11px; font-weight: 400; }
         .btn-buy {
             margin-top: 6px;
             padding: 6px 12px;
@@ -153,7 +164,6 @@
             white-space: nowrap;
         }
 
-        /* LOADING / ERROR */
         .state-box {
             text-align: center;
             padding: 40px 20px;
@@ -171,7 +181,6 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* PAGINATION */
         .pagination {
             display: flex;
             justify-content: center;
@@ -235,7 +244,6 @@
             <div class="tab" onclick="showTab('products', this)">📦 Всі товари</div>
         </div>
 
-        <!-- CATALOG TAB -->
         <div id="tab-catalog">
             <div class="section-title">Категорії</div>
             <div class="categories">
@@ -266,7 +274,6 @@
             </div>
         </div>
 
-        <!-- PRODUCTS TAB -->
         <div id="tab-products" style="display:none;">
             <div id="products-container">
                 <div class="state-box">
@@ -306,34 +313,27 @@
         tg.ready();
         tg.expand();
 
-        // ⬇️ Сюди вставляй свій ngrok URL (без слеша в кінці)
         const SERVER_URL = "https://thumb-scrubbed-unsent.ngrok-free.dev";
 
         const LIMIT = 20;
         let currentPage = 1;
         let isSearchMode = false;
-        let lastSearchQuery = "";
 
-        // --- TAB SWITCHING ---
         function showTab(tabName, el) {
             document.getElementById('tab-catalog').style.display = 'none';
             document.getElementById('tab-products').style.display = 'none';
-            document.getElementById(`tab-${tabName}`).style.display = 'block';
-
+            document.getElementById('tab-' + tabName).style.display = 'block';
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             if (el) el.classList.add('active');
-
             if (tabName === 'products' && !isSearchMode) {
                 loadProducts(1);
             }
         }
 
-        // --- SEARCH ---
         function doSearch() {
             const q = document.getElementById('searchInput').value.trim();
             if (!q) return;
             isSearchMode = true;
-            lastSearchQuery = q;
             showTab('products', document.querySelectorAll('.tab')[1]);
             searchProducts(q);
         }
@@ -341,92 +341,91 @@
         function searchCategory(q) {
             document.getElementById('searchInput').value = q;
             isSearchMode = true;
-            lastSearchQuery = q;
             showTab('products', document.querySelectorAll('.tab')[1]);
             searchProducts(q);
         }
 
-        document.getElementById('searchInput').addEventListener('keydown', e => {
+        document.getElementById('searchInput').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') doSearch();
         });
 
-        // --- LOAD ALL PRODUCTS (paginated) ---
         async function loadProducts(page) {
             currentPage = page;
             isSearchMode = false;
             showLoading();
-
             try {
                 const res = await fetch(
-                    `${SERVER_URL}/products?limit=${LIMIT}&page=${page}`,
+                    SERVER_URL + '/products?limit=' + LIMIT + '&page=' + page,
                     { headers: { "ngrok-skip-browser-warning": "1" } }
                 );
                 const data = await res.json();
                 renderProducts(data.products || []);
-                updatePagination(data.products?.length || 0);
+                updatePagination(data.products ? data.products.length : 0);
             } catch (e) {
-                showError("Не вдалося завантажити товари. Перевір з'єднання.");
+                showError("Не вдалося завантажити товари.");
             }
         }
 
-        // --- SEARCH PRODUCTS ---
         async function searchProducts(q) {
             showLoading();
             hidePagination();
-
             try {
                 const res = await fetch(
-                    `${SERVER_URL}/products/search?q=${encodeURIComponent(q)}&limit=50`,
+                    SERVER_URL + '/products/search?q=' + encodeURIComponent(q) + '&limit=50',
                     { headers: { "ngrok-skip-browser-warning": "1" } }
                 );
                 const data = await res.json();
                 const products = data.products || [];
                 renderProducts(products);
-                if (products.length === 0) showEmpty(`Нічого не знайдено за запитом «${q}»`);
+                if (!products.length) showEmpty('Нічого не знайдено за запитом «' + q + '»');
             } catch (e) {
-                showError("Помилка пошуку. Перевір з'єднання.");
+                showError("Помилка пошуку.");
             }
         }
 
-        // --- RENDER ---
         function renderProducts(products) {
             const container = document.getElementById('products-container');
             if (!products.length) {
                 showEmpty("Товарів не знайдено");
                 return;
             }
-
-            container.innerHTML = `<div class="products-grid">${products.map(p => {
-                const img = p.main_image || (p.images && p.images[0]?.url) || '';
-                return `
-                <div class="product-card">
-                    ${img ? `<img src="${img}" style="width:70px;height:70px;object-fit:contain;border-radius:8px;flex-shrink:0;">` : ''}
-                    <div class="product-info">
-                        <div class="product-name">${p.name || '—'}</div>
-                        ${p.sku ? `<div class="product-sku">Арт: ${p.sku}</div>` : ''}
-                        <div class="product-presence ${p.presence === 'available' ? 'presence-available' : 'presence-unavailable'}">
-                            ${p.presence === 'available' ? '✅ В наявності' : '❌ Немає'}
-                        </div>
-                    </div>
-                    <div class="product-right">
-                        ${p.price ? `<div class="product-price">${parseFloat(p.price).toFixed(0)} <span>грн</span></div>` : '<div class="product-price">—</div>'}
-                        <button class="btn-buy" onclick="openProduct(${p.id})">Замовити</button>
-                    </div>
-                </div>`
-            }).join('')}</div>`;
+            let html = '<div class="products-grid">';
+            for (const p of products) {
+                const rawImg = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
+                const imgUrl = rawImg ? SERVER_URL + '/image?url=' + encodeURIComponent(rawImg) : '';
+                const imgHtml = imgUrl
+                    ? '<img class="product-img" src="' + imgUrl + '" onerror="this.style.display=\'none\'">'
+                    : '<div class="product-img-placeholder">🦷</div>';
+                const price = p.price ? Math.round(parseFloat(p.price)) + ' <span>грн</span>' : '—';
+                const presence = p.presence === 'available'
+                    ? '<span class="presence-available">✅ В наявності</span>'
+                    : '<span class="presence-unavailable">❌ Немає</span>';
+                html += '<div class="product-card">';
+                html += imgHtml;
+                html += '<div class="product-info">';
+                html += '<div class="product-name">' + (p.name || '—') + '</div>';
+                if (p.sku) html += '<div class="product-sku">Арт: ' + p.sku + '</div>';
+                html += '<div class="product-presence">' + presence + '</div>';
+                html += '</div>';
+                html += '<div class="product-right">';
+                html += '<div class="product-price">' + price + '</div>';
+                html += '<button class="btn-buy" onclick="openProduct(' + p.id + ')">Замовити</button>';
+                html += '</div>';
+                html += '</div>';
+            }
+            html += '</div>';
+            container.innerHTML = html;
         }
 
         function openProduct(id) {
-            tg.openLink(`https://iradius.com.ua/p${id}`);
+            tg.openLink('https://iradius.com.ua/p' + id);
         }
 
-        // --- PAGINATION ---
         function updatePagination(count) {
-            const pag = document.getElementById('pagination');
-            pag.style.display = 'flex';
+            document.getElementById('pagination').style.display = 'flex';
             document.getElementById('btnPrev').disabled = currentPage === 1;
             document.getElementById('btnNext').disabled = count < LIMIT;
-            document.getElementById('pageInfo').textContent = `Стор. ${currentPage}`;
+            document.getElementById('pageInfo').textContent = 'Стор. ' + currentPage;
         }
 
         function hidePagination() {
@@ -438,29 +437,19 @@
             window.scrollTo(0, 0);
         }
 
-        // --- STATES ---
         function showLoading() {
-            document.getElementById('products-container').innerHTML = `
-                <div class="state-box">
-                    <div class="spinner"></div>
-                    <p>Завантаження...</p>
-                </div>`;
+            document.getElementById('products-container').innerHTML =
+                '<div class="state-box"><div class="spinner"></div><p>Завантаження...</p></div>';
         }
 
         function showEmpty(msg) {
-            document.getElementById('products-container').innerHTML = `
-                <div class="state-box">
-                    <div class="icon">🔍</div>
-                    <p>${msg}</p>
-                </div>`;
+            document.getElementById('products-container').innerHTML =
+                '<div class="state-box"><div class="icon">🔍</div><p>' + msg + '</p></div>';
         }
 
         function showError(msg) {
-            document.getElementById('products-container').innerHTML = `
-                <div class="state-box">
-                    <div class="icon">⚠️</div>
-                    <p>${msg}</p>
-                </div>`;
+            document.getElementById('products-container').innerHTML =
+                '<div class="state-box"><div class="icon">⚠️</div><p>' + msg + '</p></div>';
         }
     </script>
 </body>
