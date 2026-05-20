@@ -396,21 +396,24 @@
                 return;
             }
 
-            container.innerHTML = `<div class="products-grid">${products.map(p => `
+            container.innerHTML = `<div class="products-grid">${products.map(p => {
+                const img = p.main_image || (p.images && p.images[0]?.url) || '';
+                return `
                 <div class="product-card">
+                    ${img ? `<img src="${img}" style="width:70px;height:70px;object-fit:contain;border-radius:8px;flex-shrink:0;">` : ''}
                     <div class="product-info">
                         <div class="product-name">${p.name || '—'}</div>
                         ${p.sku ? `<div class="product-sku">Арт: ${p.sku}</div>` : ''}
                         <div class="product-presence ${p.presence === 'available' ? 'presence-available' : 'presence-unavailable'}">
-                            ${p.presence === 'available' ? '✅ В наявності' : '❌ Немає в наявності'}
+                            ${p.presence === 'available' ? '✅ В наявності' : '❌ Немає'}
                         </div>
                     </div>
                     <div class="product-right">
                         ${p.price ? `<div class="product-price">${parseFloat(p.price).toFixed(0)} <span>грн</span></div>` : '<div class="product-price">—</div>'}
                         <button class="btn-buy" onclick="openProduct(${p.id})">Замовити</button>
                     </div>
-                </div>
-            `).join('')}</div>`;
+                </div>`
+            }).join('')}</div>`;
         }
 
         function openProduct(id) {
