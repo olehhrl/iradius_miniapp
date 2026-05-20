@@ -9,7 +9,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--tg-theme-bg-color, #ffffff);
+            background: var(--tg-theme-bg-color, #f5f7fa);
             color: var(--tg-theme-text-color, #000000);
             min-height: 100vh;
         }
@@ -24,13 +24,16 @@
         }
         .header h1 { font-size: 20px; font-weight: 700; }
         .header p { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+
         .search-bar {
             padding: 12px 16px;
-            background: var(--tg-theme-bg-color, #f5f5f5);
+            background: var(--tg-theme-bg-color, #fff);
             border-bottom: 1px solid #eee;
+            display: flex;
+            gap: 8px;
         }
         .search-bar input {
-            width: 100%;
+            flex: 1;
             padding: 10px 14px;
             border: 1px solid #ddd;
             border-radius: 20px;
@@ -38,6 +41,39 @@
             background: white;
             outline: none;
         }
+        .search-bar button {
+            padding: 10px 16px;
+            background: #2E86AB;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* TABS */
+        .tabs {
+            display: flex;
+            background: white;
+            border-bottom: 2px solid #eee;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .tabs::-webkit-scrollbar { display: none; }
+        .tab {
+            flex-shrink: 0;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #999;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            white-space: nowrap;
+        }
+        .tab.active { color: #2E86AB; border-bottom-color: #2E86AB; }
+
+        /* CATEGORIES */
         .categories {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -57,6 +93,102 @@
         .category-card:active { transform: scale(0.97); }
         .category-card .icon { font-size: 32px; margin-bottom: 8px; }
         .category-card .name { font-size: 13px; font-weight: 600; color: #333; }
+
+        /* PRODUCTS */
+        .products-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 12px 16px;
+        }
+        .product-card {
+            background: white;
+            border-radius: 12px;
+            padding: 14px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .product-card:active { transform: scale(0.98); }
+        .product-info { flex: 1; min-width: 0; }
+        .product-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #222;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .product-sku { font-size: 12px; color: #999; margin-top: 3px; }
+        .product-presence {
+            font-size: 11px;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+        .presence-available { color: #27ae60; }
+        .presence-unavailable { color: #e74c3c; }
+        .product-right { text-align: right; flex-shrink: 0; }
+        .product-price {
+            font-size: 16px;
+            font-weight: 700;
+            color: #2E86AB;
+            white-space: nowrap;
+        }
+        .product-price span { font-size: 12px; font-weight: 400; }
+        .btn-buy {
+            margin-top: 6px;
+            padding: 6px 12px;
+            background: #2E86AB;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        /* LOADING / ERROR */
+        .state-box {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        .state-box .icon { font-size: 40px; margin-bottom: 12px; }
+        .state-box p { font-size: 14px; }
+        .spinner {
+            width: 36px; height: 36px;
+            border: 3px solid #eee;
+            border-top-color: #2E86AB;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* PAGINATION */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding: 16px;
+        }
+        .pagination button {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            cursor: pointer;
+            color: #2E86AB;
+        }
+        .pagination button:disabled { color: #ccc; cursor: default; }
+
         .section-title {
             padding: 16px 16px 8px;
             font-size: 16px;
@@ -94,40 +226,64 @@
 
     <div class="content">
         <div class="search-bar">
-            <input type="text" placeholder="🔍 Пошук товарів...">
+            <input type="text" id="searchInput" placeholder="🔍 Пошук товарів...">
+            <button onclick="doSearch()">Знайти</button>
         </div>
 
-        <div class="section-title">Категорії</div>
-        <div class="categories">
-            <div class="category-card">
-                <div class="icon">🦷</div>
-                <div class="name">Композити</div>
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('catalog', this)">🏠 Каталог</div>
+            <div class="tab" onclick="showTab('products', this)">📦 Всі товари</div>
+        </div>
+
+        <!-- CATALOG TAB -->
+        <div id="tab-catalog">
+            <div class="section-title">Категорії</div>
+            <div class="categories">
+                <div class="category-card" onclick="searchCategory('Композит')">
+                    <div class="icon">🦷</div>
+                    <div class="name">Композити</div>
+                </div>
+                <div class="category-card" onclick="searchCategory('Анестезія')">
+                    <div class="icon">💉</div>
+                    <div class="name">Анестезія</div>
+                </div>
+                <div class="category-card" onclick="searchCategory('відбитк')">
+                    <div class="icon">🔬</div>
+                    <div class="name">Відбиткові маси</div>
+                </div>
+                <div class="category-card" onclick="searchCategory('інструмент')">
+                    <div class="icon">⚙️</div>
+                    <div class="name">Інструменти</div>
+                </div>
+                <div class="category-card" onclick="searchCategory('гігієна')">
+                    <div class="icon">🧴</div>
+                    <div class="name">Гігієна</div>
+                </div>
+                <div class="category-card" onclick="showTab('products', document.querySelectorAll('.tab')[1])">
+                    <div class="icon">📦</div>
+                    <div class="name">Всі товари</div>
+                </div>
             </div>
-            <div class="category-card">
-                <div class="icon">💉</div>
-                <div class="name">Анестезія</div>
+        </div>
+
+        <!-- PRODUCTS TAB -->
+        <div id="tab-products" style="display:none;">
+            <div id="products-container">
+                <div class="state-box">
+                    <div class="spinner"></div>
+                    <p>Завантаження товарів...</p>
+                </div>
             </div>
-            <div class="category-card">
-                <div class="icon">🔬</div>
-                <div class="name">Відбиткові маси</div>
-            </div>
-            <div class="category-card">
-                <div class="icon">⚙️</div>
-                <div class="name">Інструменти</div>
-            </div>
-            <div class="category-card">
-                <div class="icon">🧴</div>
-                <div class="name">Гігієна</div>
-            </div>
-            <div class="category-card">
-                <div class="icon">📦</div>
-                <div class="name">Всі товари</div>
+            <div class="pagination" id="pagination" style="display:none;">
+                <button id="btnPrev" onclick="changePage(-1)" disabled>← Назад</button>
+                <span id="pageInfo" style="align-self:center; font-size:13px; color:#666;"></span>
+                <button id="btnNext" onclick="changePage(1)">Далі →</button>
             </div>
         </div>
     </div>
 
     <div class="bottom-nav">
-        <div class="nav-item active">
+        <div class="nav-item active" onclick="showTab('catalog', document.querySelectorAll('.tab')[0])">
             <span class="nav-icon">🏠</span>
             Каталог
         </div>
@@ -149,6 +305,160 @@
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
+
+        // ⬇️ Сюди вставляй свій ngrok URL (без слеша в кінці)
+        const SERVER_URL = "https://thumb-scrubbed-unsent.ngrok-free.dev";
+
+        const LIMIT = 20;
+        let currentPage = 1;
+        let isSearchMode = false;
+        let lastSearchQuery = "";
+
+        // --- TAB SWITCHING ---
+        function showTab(tabName, el) {
+            document.getElementById('tab-catalog').style.display = 'none';
+            document.getElementById('tab-products').style.display = 'none';
+            document.getElementById(`tab-${tabName}`).style.display = 'block';
+
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            if (el) el.classList.add('active');
+
+            if (tabName === 'products' && !isSearchMode) {
+                loadProducts(1);
+            }
+        }
+
+        // --- SEARCH ---
+        function doSearch() {
+            const q = document.getElementById('searchInput').value.trim();
+            if (!q) return;
+            isSearchMode = true;
+            lastSearchQuery = q;
+            showTab('products', document.querySelectorAll('.tab')[1]);
+            searchProducts(q);
+        }
+
+        function searchCategory(q) {
+            document.getElementById('searchInput').value = q;
+            isSearchMode = true;
+            lastSearchQuery = q;
+            showTab('products', document.querySelectorAll('.tab')[1]);
+            searchProducts(q);
+        }
+
+        document.getElementById('searchInput').addEventListener('keydown', e => {
+            if (e.key === 'Enter') doSearch();
+        });
+
+        // --- LOAD ALL PRODUCTS (paginated) ---
+        async function loadProducts(page) {
+            currentPage = page;
+            isSearchMode = false;
+            showLoading();
+
+            try {
+                const res = await fetch(
+                    `${SERVER_URL}/products?limit=${LIMIT}&page=${page}`,
+                    { headers: { "ngrok-skip-browser-warning": "1" } }
+                );
+                const data = await res.json();
+                renderProducts(data.products || []);
+                updatePagination(data.products?.length || 0);
+            } catch (e) {
+                showError("Не вдалося завантажити товари. Перевір з'єднання.");
+            }
+        }
+
+        // --- SEARCH PRODUCTS ---
+        async function searchProducts(q) {
+            showLoading();
+            hidePagination();
+
+            try {
+                const res = await fetch(
+                    `${SERVER_URL}/products/search?q=${encodeURIComponent(q)}&limit=50`,
+                    { headers: { "ngrok-skip-browser-warning": "1" } }
+                );
+                const data = await res.json();
+                const products = data.products || [];
+                renderProducts(products);
+                if (products.length === 0) showEmpty(`Нічого не знайдено за запитом «${q}»`);
+            } catch (e) {
+                showError("Помилка пошуку. Перевір з'єднання.");
+            }
+        }
+
+        // --- RENDER ---
+        function renderProducts(products) {
+            const container = document.getElementById('products-container');
+            if (!products.length) {
+                showEmpty("Товарів не знайдено");
+                return;
+            }
+
+            container.innerHTML = `<div class="products-grid">${products.map(p => `
+                <div class="product-card">
+                    <div class="product-info">
+                        <div class="product-name">${p.name || '—'}</div>
+                        ${p.sku ? `<div class="product-sku">Арт: ${p.sku}</div>` : ''}
+                        <div class="product-presence ${p.presence === 'available' ? 'presence-available' : 'presence-unavailable'}">
+                            ${p.presence === 'available' ? '✅ В наявності' : '❌ Немає в наявності'}
+                        </div>
+                    </div>
+                    <div class="product-right">
+                        ${p.price ? `<div class="product-price">${parseFloat(p.price).toFixed(0)} <span>грн</span></div>` : '<div class="product-price">—</div>'}
+                        <button class="btn-buy" onclick="openProduct(${p.id})">Замовити</button>
+                    </div>
+                </div>
+            `).join('')}</div>`;
+        }
+
+        function openProduct(id) {
+            tg.openLink(`https://iradius.com.ua/p${id}`);
+        }
+
+        // --- PAGINATION ---
+        function updatePagination(count) {
+            const pag = document.getElementById('pagination');
+            pag.style.display = 'flex';
+            document.getElementById('btnPrev').disabled = currentPage === 1;
+            document.getElementById('btnNext').disabled = count < LIMIT;
+            document.getElementById('pageInfo').textContent = `Стор. ${currentPage}`;
+        }
+
+        function hidePagination() {
+            document.getElementById('pagination').style.display = 'none';
+        }
+
+        function changePage(dir) {
+            loadProducts(currentPage + dir);
+            window.scrollTo(0, 0);
+        }
+
+        // --- STATES ---
+        function showLoading() {
+            document.getElementById('products-container').innerHTML = `
+                <div class="state-box">
+                    <div class="spinner"></div>
+                    <p>Завантаження...</p>
+                </div>`;
+        }
+
+        function showEmpty(msg) {
+            document.getElementById('products-container').innerHTML = `
+                <div class="state-box">
+                    <div class="icon">🔍</div>
+                    <p>${msg}</p>
+                </div>`;
+        }
+
+        function showError(msg) {
+            document.getElementById('products-container').innerHTML = `
+                <div class="state-box">
+                    <div class="icon">⚠️</div>
+                    <p>${msg}</p>
+                </div>`;
+        }
     </script>
 </body>
 </html>
