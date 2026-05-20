@@ -13,6 +13,8 @@
             color: var(--tg-theme-text-color, #000000);
             min-height: 100vh;
         }
+
+        /* HEADER */
         .header {
             background: #2E86AB;
             color: white;
@@ -21,13 +23,28 @@
             position: sticky;
             top: 0;
             z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
         .header h1 { font-size: 20px; font-weight: 700; }
         .header p { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+        .header-back {
+            position: absolute;
+            left: 16px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            display: none;
+        }
 
+        /* SEARCH */
         .search-bar {
             padding: 12px 16px;
-            background: var(--tg-theme-bg-color, #fff);
+            background: white;
             border-bottom: 1px solid #eee;
             display: flex;
             gap: 8px;
@@ -51,6 +68,7 @@
             cursor: pointer;
         }
 
+        /* TABS */
         .tabs {
             display: flex;
             background: white;
@@ -72,6 +90,7 @@
         }
         .tab.active { color: #2E86AB; border-bottom-color: #2E86AB; }
 
+        /* CATEGORIES */
         .categories {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -92,6 +111,7 @@
         .category-card .icon { font-size: 32px; margin-bottom: 8px; }
         .category-card .name { font-size: 13px; font-weight: 600; color: #333; }
 
+        /* PRODUCT LIST */
         .products-grid {
             display: flex;
             flex-direction: column;
@@ -164,6 +184,122 @@
             white-space: nowrap;
         }
 
+        /* PRODUCT DETAIL */
+        #page-detail {
+            display: none;
+            padding-bottom: 140px;
+        }
+        .detail-img-wrap {
+            background: white;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+        }
+        .detail-img {
+            max-width: 100%;
+            max-height: 260px;
+            object-fit: contain;
+            border-radius: 12px;
+        }
+        .detail-img-placeholder {
+            font-size: 80px;
+            padding: 30px 0;
+        }
+        .detail-body {
+            padding: 16px;
+        }
+        .detail-name {
+            font-size: 17px;
+            font-weight: 700;
+            color: #111;
+            line-height: 1.4;
+        }
+        .detail-sku {
+            font-size: 12px;
+            color: #999;
+            margin-top: 6px;
+        }
+        .detail-price-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 14px;
+        }
+        .detail-price {
+            font-size: 26px;
+            font-weight: 800;
+            color: #2E86AB;
+        }
+        .detail-price span { font-size: 16px; font-weight: 500; }
+        .detail-presence {
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+        .detail-presence.available { background: #e8f8ef; color: #27ae60; }
+        .detail-presence.unavailable { background: #fdecea; color: #e74c3c; }
+        .detail-desc-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #333;
+            margin-top: 20px;
+            margin-bottom: 8px;
+        }
+        .detail-desc {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.6;
+        }
+        .detail-desc * { max-width: 100%; }
+
+        /* DETAIL BOTTOM BUTTONS */
+        .detail-actions {
+            position: fixed;
+            bottom: 60px;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #eee;
+            padding: 12px 16px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn-favorite {
+            padding: 12px 16px;
+            background: white;
+            color: #2E86AB;
+            border: 2px solid #2E86AB;
+            border-radius: 12px;
+            font-size: 20px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .btn-favorite.active { background: #fff0f0; border-color: #e74c3c; color: #e74c3c; }
+        .btn-cart {
+            flex: 1;
+            padding: 12px;
+            background: #2E86AB;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-order {
+            flex: 1;
+            padding: 12px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* LOADING / ERROR */
         .state-box {
             text-align: center;
             padding: 40px 20px;
@@ -181,6 +317,7 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* PAGINATION */
         .pagination {
             display: flex;
             justify-content: center;
@@ -204,6 +341,8 @@
             font-weight: 700;
             color: #333;
         }
+
+        /* BOTTOM NAV */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -213,6 +352,7 @@
             border-top: 1px solid #eee;
             display: flex;
             padding: 8px 0;
+            z-index: 50;
         }
         .nav-item {
             flex: 1;
@@ -225,15 +365,37 @@
         .nav-item.active { color: #2E86AB; }
         .nav-item .nav-icon { font-size: 22px; display: block; }
         .content { padding-bottom: 70px; }
+
+        /* TOAST */
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s;
+            white-space: nowrap;
+        }
+        .toast.show { opacity: 1; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🦷 IRadius Dental Shop</h1>
-        <p>Стоматологічні матеріали та обладнання</p>
+        <button class="header-back" id="btnBack" onclick="goBack()">←</button>
+        <div>
+            <h1>🦷 IRadius Dental Shop</h1>
+            <p id="headerSub">Стоматологічні матеріали та обладнання</p>
+        </div>
     </div>
 
-    <div class="content">
+    <!-- MAIN CONTENT -->
+    <div class="content" id="page-main">
         <div class="search-bar">
             <input type="text" id="searchInput" placeholder="🔍 Пошук товарів...">
             <button onclick="doSearch()">Знайти</button>
@@ -289,24 +451,42 @@
         </div>
     </div>
 
-    <div class="bottom-nav">
-        <div class="nav-item active" onclick="showTab('catalog', document.querySelectorAll('.tab')[0])">
-            <span class="nav-icon">🏠</span>
-            Каталог
+    <!-- PRODUCT DETAIL PAGE -->
+    <div id="page-detail">
+        <div id="detail-img-wrap" class="detail-img-wrap"></div>
+        <div class="detail-body">
+            <div class="detail-name" id="detail-name"></div>
+            <div class="detail-sku" id="detail-sku"></div>
+            <div class="detail-price-row">
+                <div class="detail-price" id="detail-price"></div>
+                <div class="detail-presence" id="detail-presence"></div>
+            </div>
+            <div class="detail-desc-title" id="detail-desc-title" style="display:none;">Опис</div>
+            <div class="detail-desc" id="detail-desc"></div>
         </div>
-        <div class="nav-item">
-            <span class="nav-icon">❤️</span>
-            Обране
-        </div>
-        <div class="nav-item">
-            <span class="nav-icon">🛒</span>
-            Кошик
-        </div>
-        <div class="nav-item">
-            <span class="nav-icon">👤</span>
-            Кабінет
+        <div class="detail-actions">
+            <button class="btn-favorite" id="btnFavorite" onclick="toggleFavorite()">❤️</button>
+            <button class="btn-cart" onclick="addToCart()">🛒 В кошик</button>
+            <button class="btn-order" onclick="orderNow()">Замовити</button>
         </div>
     </div>
+
+    <div class="bottom-nav">
+        <div class="nav-item active" id="nav-catalog" onclick="goHome()">
+            <span class="nav-icon">🏠</span>Каталог
+        </div>
+        <div class="nav-item" id="nav-fav">
+            <span class="nav-icon">❤️</span>Обране
+        </div>
+        <div class="nav-item" id="nav-cart">
+            <span class="nav-icon">🛒</span>Кошик
+        </div>
+        <div class="nav-item" id="nav-profile">
+            <span class="nav-icon">👤</span>Кабінет
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
 
     <script>
         const tg = window.Telegram.WebApp;
@@ -314,10 +494,24 @@
         tg.expand();
 
         const SERVER_URL = "https://thumb-scrubbed-unsent.ngrok-free.dev";
-
         const LIMIT = 20;
         let currentPage = 1;
         let isSearchMode = false;
+        let currentProductId = null;
+        let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+        let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+
+        // --- NAVIGATION ---
+        function goHome() {
+            document.getElementById('page-main').style.display = 'block';
+            document.getElementById('page-detail').style.display = 'none';
+            document.getElementById('btnBack').style.display = 'none';
+            document.getElementById('headerSub').textContent = 'Стоматологічні матеріали та обладнання';
+        }
+
+        function goBack() {
+            goHome();
+        }
 
         function showTab(tabName, el) {
             document.getElementById('tab-catalog').style.display = 'none';
@@ -330,6 +524,7 @@
             }
         }
 
+        // --- SEARCH ---
         function doSearch() {
             const q = document.getElementById('searchInput').value.trim();
             if (!q) return;
@@ -349,6 +544,7 @@
             if (e.key === 'Enter') doSearch();
         });
 
+        // --- LOAD PRODUCTS ---
         async function loadProducts(page) {
             currentPage = page;
             isSearchMode = false;
@@ -383,12 +579,10 @@
             }
         }
 
+        // --- RENDER LIST ---
         function renderProducts(products) {
             const container = document.getElementById('products-container');
-            if (!products.length) {
-                showEmpty("Товарів не знайдено");
-                return;
-            }
+            if (!products.length) { showEmpty("Товарів не знайдено"); return; }
             let html = '<div class="products-grid">';
             for (const p of products) {
                 const rawImg = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
@@ -400,7 +594,7 @@
                 const presence = p.presence === 'available'
                     ? '<span class="presence-available">✅ В наявності</span>'
                     : '<span class="presence-unavailable">❌ Немає</span>';
-                html += '<div class="product-card">';
+                html += '<div class="product-card" onclick="openDetail(' + p.id + ')">';
                 html += imgHtml;
                 html += '<div class="product-info">';
                 html += '<div class="product-name">' + (p.name || '—') + '</div>';
@@ -409,7 +603,6 @@
                 html += '</div>';
                 html += '<div class="product-right">';
                 html += '<div class="product-price">' + price + '</div>';
-                html += '<button class="btn-buy" onclick="openProduct(' + p.id + ')">Замовити</button>';
                 html += '</div>';
                 html += '</div>';
             }
@@ -417,10 +610,109 @@
             container.innerHTML = html;
         }
 
-        function openProduct(id) {
-            tg.openLink('https://iradius.com.ua/p' + id);
+        // --- PRODUCT DETAIL ---
+        async function openDetail(id) {
+            currentProductId = id;
+            document.getElementById('page-main').style.display = 'none';
+            document.getElementById('page-detail').style.display = 'block';
+            document.getElementById('btnBack').style.display = 'block';
+            document.getElementById('headerSub').textContent = 'Картка товару';
+
+            // Show loading
+            document.getElementById('detail-img-wrap').innerHTML = '<div class="state-box"><div class="spinner"></div><p>Завантаження...</p></div>';
+            document.getElementById('detail-name').textContent = '';
+            document.getElementById('detail-price').textContent = '';
+            document.getElementById('detail-desc').textContent = '';
+
+            try {
+                const res = await fetch(
+                    SERVER_URL + '/products/' + id,
+                    { headers: { "ngrok-skip-browser-warning": "1" } }
+                );
+                const data = await res.json();
+                const p = data.product;
+                if (!p) { showError("Товар не знайдено."); return; }
+
+                // Image
+                const rawImg = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
+                const imgUrl = rawImg ? SERVER_URL + '/image?url=' + encodeURIComponent(rawImg) : '';
+                document.getElementById('detail-img-wrap').innerHTML = imgUrl
+                    ? '<img class="detail-img" src="' + imgUrl + '">'
+                    : '<div class="detail-img-placeholder">🦷</div>';
+
+                // Info
+                document.getElementById('detail-name').textContent = p.name || '—';
+                document.getElementById('detail-sku').textContent = p.sku ? 'Артикул: ' + p.sku : '';
+                document.getElementById('detail-price').innerHTML = p.price
+                    ? Math.round(parseFloat(p.price)) + ' <span>грн</span>'
+                    : '—';
+
+                // Presence
+                const presEl = document.getElementById('detail-presence');
+                if (p.presence === 'available') {
+                    presEl.textContent = '✅ В наявності';
+                    presEl.className = 'detail-presence available';
+                } else {
+                    presEl.textContent = '❌ Немає';
+                    presEl.className = 'detail-presence unavailable';
+                }
+
+                // Description
+                const desc = p.description || '';
+                if (desc) {
+                    document.getElementById('detail-desc-title').style.display = 'block';
+                    document.getElementById('detail-desc').innerHTML = desc;
+                } else {
+                    document.getElementById('detail-desc-title').style.display = 'none';
+                    document.getElementById('detail-desc').textContent = '';
+                }
+
+                // Favorite button
+                updateFavoriteBtn();
+
+            } catch (e) {
+                document.getElementById('detail-img-wrap').innerHTML = '';
+                document.getElementById('detail-name').textContent = 'Помилка завантаження';
+            }
         }
 
+        // --- FAVORITE ---
+        function toggleFavorite() {
+            const idx = favorites.indexOf(currentProductId);
+            if (idx === -1) {
+                favorites.push(currentProductId);
+                showToast('Додано в обране ❤️');
+            } else {
+                favorites.splice(idx, 1);
+                showToast('Видалено з обраного');
+            }
+            localStorage.setItem('favorites', JSON.stringify(favorites));
+            updateFavoriteBtn();
+        }
+
+        function updateFavoriteBtn() {
+            const btn = document.getElementById('btnFavorite');
+            if (favorites.includes(currentProductId)) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        }
+
+        // --- CART ---
+        function addToCart() {
+            if (!cart.includes(currentProductId)) {
+                cart.push(currentProductId);
+                localStorage.setItem('cart', JSON.stringify(cart));
+            }
+            showToast('Додано в кошик 🛒');
+        }
+
+        function orderNow() {
+            tg.openLink('https://iradius.com.ua/p' + currentProductId);
+        }
+
+        // --- PAGINATION ---
         function updatePagination(count) {
             document.getElementById('pagination').style.display = 'flex';
             document.getElementById('btnPrev').disabled = currentPage === 1;
@@ -437,19 +729,26 @@
             window.scrollTo(0, 0);
         }
 
+        // --- STATES ---
         function showLoading() {
             document.getElementById('products-container').innerHTML =
                 '<div class="state-box"><div class="spinner"></div><p>Завантаження...</p></div>';
         }
-
         function showEmpty(msg) {
             document.getElementById('products-container').innerHTML =
                 '<div class="state-box"><div class="icon">🔍</div><p>' + msg + '</p></div>';
         }
-
         function showError(msg) {
             document.getElementById('products-container').innerHTML =
                 '<div class="state-box"><div class="icon">⚠️</div><p>' + msg + '</p></div>';
+        }
+
+        // --- TOAST ---
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(function() { t.classList.remove('show'); }, 2000);
         }
     </script>
 </body>
