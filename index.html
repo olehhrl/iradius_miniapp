@@ -73,6 +73,13 @@
         .tile-price { font-size: 14px; font-weight: 800; color: var(--teal); }
         .tile-price span { font-size: 10px; font-weight: 500; }
 
+
+        /* SORT BAR */
+        .sort-bar { display: flex; gap: 6px; padding: 10px 14px; overflow-x: auto; scrollbar-width: none; background: var(--white); border-bottom: 1px solid var(--border); }
+        .sort-bar::-webkit-scrollbar { display: none; }
+        .sort-btn { flex-shrink: 0; padding: 6px 12px; border-radius: 20px; border: 1.5px solid var(--border); background: white; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+        .sort-btn.active { background: var(--teal); color: white; border-color: var(--teal); }
+
         /* INLINE QTY CONTROL */
         .tile-qty-ctrl { display: flex; align-items: center; gap: 2px; }
         .tile-qty-btn { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--teal); background: white; color: var(--teal); font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -193,6 +200,12 @@
 
     <!-- PRODUCTS -->
     <div id="page-products" style="display:none; padding-bottom:70px;">
+        <div class="sort-bar" id="sort-bar">
+            <button class="sort-btn active" id="sort-date" onclick="setSort('date', this)">🆕 Новинки</button>
+            <button class="sort-btn" id="sort-cheap" onclick="setSort('price', this)">💰 Дешевші</button>
+            <button class="sort-btn" id="sort-expensive" onclick="setSort('-price', this)">💎 Дорожчі</button>
+            <button class="sort-btn" id="sort-popular" onclick="setSort('popularity', this)">🔥 Популярні</button>
+        </div>
         <div id="products-container"></div>
         <div class="pagination" id="pagination" style="display:none;">
             <button id="btnPrev" disabled>← Назад</button>
@@ -266,6 +279,7 @@
 
         let currentPage = 1;
         let currentGroupId = null;
+        let currentSort = 'date';
         let isSearchMode = false;
         let lastSearchQuery = '';
         let currentProductId = null;
@@ -451,6 +465,19 @@
             }
         }
 
+
+        // --- SORT ---
+        function setSort(sort, el) {
+            currentSort = sort;
+            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            if (isSearchMode) {
+                searchProducts(lastSearchQuery);
+            } else {
+                loadProducts(1, currentGroupId);
+            }
+        }
+
         // --- SEARCH ---
         function doSearch() {
             const q = document.getElementById('searchInput').value.trim();
@@ -474,6 +501,7 @@
             try {
                 let url = SERVER_URL + '/products?limit=' + LIMIT + '&page=' + page;
                 if (groupId) url += '&group_id=' + groupId;
+                if (currentSort) url += '&sort=' + currentSort;
                 const res = await fetch(url, { headers: H });
                 const data = await res.json();
                 await renderProducts(data.products || [], 'products-container');
