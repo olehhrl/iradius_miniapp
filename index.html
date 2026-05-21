@@ -7,282 +7,357 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --teal: #00A499;
+            --teal-dark: #007A70;
+            --teal-light: #E0F5F4;
+            --green: #4CAF87;
+            --green-light: #E8F5EE;
+            --white: #ffffff;
+            --bg: #F0F9F8;
+            --text: #1A1A1A;
+            --text-muted: #888;
+            --border: #E0EDEC;
+            --shadow: 0 2px 8px rgba(0,164,153,0.10);
+        }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--tg-theme-bg-color, #f5f7fa);
-            color: var(--tg-theme-text-color, #000000);
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
         }
+
+        /* HEADER */
         .header {
-            background: #2E86AB;
+            background: var(--teal);
             color: white;
-            padding: 16px;
-            text-align: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            padding: 8px 16px;
             display: flex;
             align-items: center;
             justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 200;
         }
-        .header h1 { font-size: 20px; font-weight: 700; }
-        .header p { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+        .header-title { font-size: 16px; font-weight: 700; letter-spacing: 0.3px; }
         .header-back {
             position: absolute;
-            left: 16px;
+            left: 12px;
             background: none;
             border: none;
             color: white;
-            font-size: 24px;
+            font-size: 22px;
             cursor: pointer;
             display: none;
+            line-height: 1;
         }
-        .search-bar {
-            padding: 12px 16px;
-            background: white;
-            border-bottom: 1px solid #eee;
+
+        /* SEARCH — sticky під хедером */
+        .search-wrap {
+            position: sticky;
+            top: 37px;
+            z-index: 190;
+            background: var(--white);
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
             display: flex;
             gap: 8px;
         }
-        .search-bar input {
+        .search-wrap input {
             flex: 1;
-            padding: 10px 14px;
-            border: 1px solid #ddd;
+            padding: 9px 14px;
+            border: 1.5px solid var(--border);
             border-radius: 20px;
-            font-size: 15px;
-            background: white;
+            font-size: 14px;
+            background: var(--bg);
             outline: none;
+            color: var(--text);
         }
-        .search-bar button {
-            padding: 10px 16px;
-            background: #2E86AB;
+        .search-wrap input:focus { border-color: var(--teal); }
+        .search-wrap button {
+            padding: 9px 16px;
+            background: var(--teal);
             color: white;
             border: none;
             border-radius: 20px;
-            font-size: 14px;
-            cursor: pointer;
-        }
-        .tabs {
-            display: flex;
-            background: white;
-            border-bottom: 2px solid #eee;
-            overflow-x: auto;
-            scrollbar-width: none;
-        }
-        .tabs::-webkit-scrollbar { display: none; }
-        .tab {
-            flex-shrink: 0;
-            padding: 10px 16px;
             font-size: 13px;
             font-weight: 600;
-            color: #999;
             cursor: pointer;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -2px;
-            white-space: nowrap;
         }
-        .tab.active { color: #2E86AB; border-bottom-color: #2E86AB; }
-        .categories {
+
+        /* CONTENT */
+        .content { padding-bottom: 70px; }
+
+        /* CATEGORIES GRID */
+        .section-title {
+            padding: 14px 14px 8px;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--teal-dark);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .categories-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            padding: 16px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 0 14px 14px;
         }
         .category-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px 16px;
+            background: var(--white);
+            border-radius: 14px;
+            padding: 16px 8px 12px;
             text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            box-shadow: var(--shadow);
             cursor: pointer;
-            transition: transform 0.15s;
-            border: 1px solid #f0f0f0;
+            transition: transform 0.15s, box-shadow 0.15s;
+            border: 1.5px solid var(--border);
         }
-        .category-card:active { transform: scale(0.97); }
-        .category-card .icon { font-size: 32px; margin-bottom: 8px; }
-        .category-card .name { font-size: 13px; font-weight: 600; color: #333; }
+        .category-card:active { transform: scale(0.96); }
+        .category-card .icon { font-size: 28px; margin-bottom: 6px; }
+        .category-card .name { font-size: 11px; font-weight: 600; color: var(--teal-dark); line-height: 1.3; }
+
+        /* PRODUCTS GRID (плитки) */
         .products-grid {
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
             gap: 10px;
-            padding: 12px 16px;
+            padding: 10px 14px;
         }
-        .product-card {
-            background: white;
-            border-radius: 12px;
-            padding: 14px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.07);
-            display: flex;
-            align-items: center;
-            gap: 12px;
+        .product-tile {
+            background: var(--white);
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+            border: 1.5px solid var(--border);
+            overflow: hidden;
             cursor: pointer;
             transition: transform 0.1s;
+            display: flex;
+            flex-direction: column;
         }
-        .product-card:active { transform: scale(0.98); }
-        .product-img {
-            width: 70px;
-            height: 70px;
-            object-fit: contain;
-            border-radius: 8px;
-            flex-shrink: 0;
-            background: #f5f5f5;
-        }
-        .product-img-placeholder {
-            width: 70px;
-            height: 70px;
-            border-radius: 8px;
-            flex-shrink: 0;
-            background: #f0f4f7;
+        .product-tile:active { transform: scale(0.97); }
+        .tile-img-wrap {
+            width: 100%;
+            aspect-ratio: 1;
+            background: var(--bg);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 28px;
+            position: relative;
+            overflow: hidden;
         }
-        .product-info { flex: 1; min-width: 0; }
-        .product-name {
-            font-size: 13px;
+        .tile-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 8px;
+        }
+        .tile-img-placeholder { font-size: 48px; }
+        .tile-actions {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .tile-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+            background: white;
+            transition: transform 0.1s;
+        }
+        .tile-btn:active { transform: scale(0.9); }
+        .tile-fav { color: #ccc; }
+        .tile-fav.active { color: #e74c3c; }
+        .tile-body { padding: 10px; flex: 1; display: flex; flex-direction: column; }
+        .tile-name {
+            font-size: 12px;
             font-weight: 600;
-            color: #222;
+            color: var(--text);
             line-height: 1.3;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
+            flex: 1;
         }
-        .product-sku { font-size: 11px; color: #999; margin-top: 3px; }
-        .product-presence { font-size: 11px; margin-top: 4px; font-weight: 500; }
-        .presence-available { color: #27ae60; }
+        .tile-sku { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+        .tile-bottom {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+        .tile-price { font-size: 14px; font-weight: 800; color: var(--teal); }
+        .tile-price span { font-size: 10px; font-weight: 500; }
+        .tile-add {
+            width: 28px;
+            height: 28px;
+            background: var(--teal);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 18px;
+            font-weight: 300;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .tile-presence {
+            font-size: 10px;
+            font-weight: 500;
+            margin-top: 3px;
+        }
+        .presence-available { color: var(--green); }
         .presence-unavailable { color: #e74c3c; }
-        .product-right { text-align: right; flex-shrink: 0; }
-        .product-price {
-            font-size: 15px;
-            font-weight: 700;
-            color: #2E86AB;
-            white-space: nowrap;
-        }
-        .product-price span { font-size: 11px; font-weight: 400; }
-        #page-detail { display: none; padding-bottom: 140px; }
+
+        /* PRODUCT DETAIL */
+        #page-detail { display: none; padding-bottom: 100px; }
         .detail-img-wrap {
-            background: white;
+            background: var(--white);
             padding: 20px;
             text-align: center;
-            border-bottom: 1px solid #eee;
-            min-height: 120px;
+            border-bottom: 1px solid var(--border);
+            min-height: 200px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
-        .detail-img { max-width: 100%; max-height: 260px; object-fit: contain; border-radius: 12px; }
+        .detail-img { max-width: 100%; max-height: 240px; object-fit: contain; border-radius: 12px; }
         .detail-img-placeholder { font-size: 80px; }
         .detail-body { padding: 16px; }
-        .detail-name { font-size: 17px; font-weight: 700; color: #111; line-height: 1.4; }
-        .detail-sku { font-size: 12px; color: #999; margin-top: 6px; }
+        .detail-name { font-size: 17px; font-weight: 700; color: var(--text); line-height: 1.4; }
+        .detail-sku { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
         .detail-price-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-top: 14px;
+            margin-top: 12px;
         }
-        .detail-price { font-size: 26px; font-weight: 800; color: #2E86AB; }
+        .detail-price { font-size: 28px; font-weight: 800; color: var(--teal); }
         .detail-price span { font-size: 16px; font-weight: 500; }
-        .detail-presence {
-            font-size: 13px;
+        .detail-presence-badge {
+            font-size: 12px;
             font-weight: 600;
             padding: 6px 12px;
             border-radius: 20px;
         }
-        .detail-presence.available { background: #e8f8ef; color: #27ae60; }
-        .detail-presence.unavailable { background: #fdecea; color: #e74c3c; }
-        .detail-desc-title { font-size: 15px; font-weight: 700; color: #333; margin-top: 20px; margin-bottom: 8px; }
+        .detail-presence-badge.available { background: var(--green-light); color: var(--green); }
+        .detail-presence-badge.unavailable { background: #fdecea; color: #e74c3c; }
+        .detail-desc-title { font-size: 14px; font-weight: 700; color: var(--teal-dark); margin-top: 18px; margin-bottom: 8px; }
         .detail-desc { font-size: 13px; color: #555; line-height: 1.6; }
         .detail-desc * { max-width: 100%; }
+
+        /* DETAIL ACTIONS */
         .detail-actions {
             position: fixed;
             bottom: 60px;
-            left: 0;
-            right: 0;
-            background: white;
-            border-top: 1px solid #eee;
+            left: 0; right: 0;
+            background: var(--white);
+            border-top: 1px solid var(--border);
             padding: 12px 16px;
             display: flex;
             gap: 10px;
+            align-items: center;
         }
-        .btn-favorite {
-            padding: 12px 16px;
-            background: white;
-            color: #2E86AB;
-            border: 2px solid #2E86AB;
+        .btn-fav-detail {
+            width: 48px;
+            height: 48px;
             border-radius: 12px;
-            font-size: 20px;
+            border: 2px solid var(--border);
+            background: var(--white);
+            font-size: 22px;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             flex-shrink: 0;
+            color: #ccc;
+            transition: all 0.2s;
         }
-        .btn-favorite.active { background: #fff0f0; border-color: #e74c3c; color: #e74c3c; }
-        .btn-cart {
+        .btn-fav-detail.active { border-color: #e74c3c; color: #e74c3c; background: #fff0f0; }
+        .btn-cart-detail {
             flex: 1;
-            padding: 12px;
-            background: #2E86AB;
+            padding: 14px;
+            background: var(--teal);
             color: white;
             border: none;
             border-radius: 12px;
             font-size: 15px;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
         }
-        .btn-order {
-            flex: 1;
-            padding: 12px;
-            background: #27ae60;
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .state-box { text-align: center; padding: 40px 20px; color: #999; }
+
+        /* STATES */
+        .state-box { text-align: center; padding: 40px 20px; color: var(--text-muted); }
         .state-box .icon { font-size: 40px; margin-bottom: 12px; }
         .state-box p { font-size: 14px; }
         .spinner {
             width: 36px; height: 36px;
-            border: 3px solid #eee;
-            border-top-color: #2E86AB;
+            border: 3px solid var(--border);
+            border-top-color: var(--teal);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin: 0 auto 12px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* PAGINATION */
         .pagination { display: flex; justify-content: center; gap: 8px; padding: 16px; }
         .pagination button {
-            padding: 8px 16px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
+            padding: 8px 18px;
+            border: 1.5px solid var(--teal);
+            border-radius: 20px;
             background: white;
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: 600;
             cursor: pointer;
-            color: #2E86AB;
+            color: var(--teal);
         }
-        .pagination button:disabled { color: #ccc; cursor: default; }
-        .section-title { padding: 16px 16px 8px; font-size: 16px; font-weight: 700; color: #333; }
+        .pagination button:disabled { color: var(--border); border-color: var(--border); cursor: default; }
+        #pageInfo { align-self: center; font-size: 13px; color: var(--text-muted); }
+
+        /* BOTTOM NAV */
         .bottom-nav {
             position: fixed;
             bottom: 0; left: 0; right: 0;
-            background: white;
-            border-top: 1px solid #eee;
+            background: var(--white);
+            border-top: 1px solid var(--border);
             display: flex;
-            padding: 8px 0;
-            z-index: 50;
+            padding: 6px 0 4px;
+            z-index: 150;
         }
-        .nav-item { flex: 1; text-align: center; padding: 6px; cursor: pointer; color: #999; font-size: 11px; }
-        .nav-item.active { color: #2E86AB; }
-        .nav-item .nav-icon { font-size: 22px; display: block; }
-        .content { padding-bottom: 70px; }
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 4px;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 10px;
+            font-weight: 500;
+        }
+        .nav-item.active { color: var(--teal); }
+        .nav-item .nav-icon { font-size: 20px; display: block; margin-bottom: 2px; }
+
+        /* TOAST */
         .toast {
             position: fixed;
             bottom: 80px;
             left: 50%;
             transform: translateX(-50%);
-            background: #333;
+            background: #1A1A1A;
             color: white;
             padding: 10px 20px;
             border-radius: 20px;
@@ -291,6 +366,7 @@
             opacity: 0;
             transition: opacity 0.3s;
             white-space: nowrap;
+            pointer-events: none;
         }
         .toast.show { opacity: 1; }
     </style>
@@ -298,44 +374,43 @@
 <body>
     <div class="header">
         <button class="header-back" id="btnBack" onclick="goBack()">←</button>
-        <div>
-            <h1>🦷 IRadius Dental Shop</h1>
-            <p id="headerSub">Стоматологічні матеріали та обладнання</p>
-        </div>
+        <div class="header-title" id="headerTitle">🦷 IRadius Dental Shop</div>
     </div>
 
+    <div class="search-wrap">
+        <input type="text" id="searchInput" placeholder="🔍 Пошук товарів...">
+        <button onclick="doSearch()">Знайти</button>
+    </div>
+
+    <!-- MAIN: CATALOG -->
     <div class="content" id="page-main">
-        <div class="search-bar">
-            <input type="text" id="searchInput" placeholder="🔍 Пошук товарів...">
-            <button onclick="doSearch()">Знайти</button>
-        </div>
-        <div class="tabs">
-            <div class="tab active" onclick="showTab('catalog', this)">🏠 Каталог</div>
-            <div class="tab" onclick="showTab('products', this)">📦 Всі товари</div>
-        </div>
-        <div id="tab-catalog">
-            <div class="section-title">Категорії</div>
-            <div class="categories">
-                <div class="category-card" onclick="searchCategory('Композит')"><div class="icon">🦷</div><div class="name">Композити</div></div>
-                <div class="category-card" onclick="searchCategory('Анестезія')"><div class="icon">💉</div><div class="name">Анестезія</div></div>
-                <div class="category-card" onclick="searchCategory('відбитк')"><div class="icon">🔬</div><div class="name">Відбиткові маси</div></div>
-                <div class="category-card" onclick="searchCategory('інструмент')"><div class="icon">⚙️</div><div class="name">Інструменти</div></div>
-                <div class="category-card" onclick="searchCategory('гігієна')"><div class="icon">🧴</div><div class="name">Гігієна</div></div>
-                <div class="category-card" onclick="showTab('products', document.querySelectorAll('.tab')[1])"><div class="icon">📦</div><div class="name">Всі товари</div></div>
-            </div>
-        </div>
-        <div id="tab-products" style="display:none;">
-            <div id="products-container">
-                <div class="state-box"><div class="spinner"></div><p>Завантаження товарів...</p></div>
-            </div>
-            <div class="pagination" id="pagination" style="display:none;">
-                <button id="btnPrev" onclick="changePage(-1)" disabled>← Назад</button>
-                <span id="pageInfo" style="align-self:center; font-size:13px; color:#666;"></span>
-                <button id="btnNext" onclick="changePage(1)">Далі →</button>
-            </div>
+        <div class="section-title">Категорії</div>
+        <div class="categories-grid">
+            <div class="category-card" onclick="searchCategory('Композит')"><div class="icon">🦷</div><div class="name">Композити</div></div>
+            <div class="category-card" onclick="searchCategory('Анестезія')"><div class="icon">💉</div><div class="name">Анестезія</div></div>
+            <div class="category-card" onclick="searchCategory('відбитк')"><div class="icon">🔬</div><div class="name">Відбиткові маси</div></div>
+            <div class="category-card" onclick="searchCategory('інструмент')"><div class="icon">⚙️</div><div class="name">Інструменти</div></div>
+            <div class="category-card" onclick="searchCategory('гігієна')"><div class="icon">🧴</div><div class="name">Гігієна</div></div>
+            <div class="category-card" onclick="searchCategory('коронк')"><div class="icon">👑</div><div class="name">Коронки</div></div>
+            <div class="category-card" onclick="searchCategory('рукавичк')"><div class="icon">🧤</div><div class="name">Рукавички</div></div>
+            <div class="category-card" onclick="searchCategory('маск')"><div class="icon">😷</div><div class="name">Маски</div></div>
+            <div class="category-card" onclick="loadAllProducts()"><div class="icon">📦</div><div class="name">Всі товари</div></div>
         </div>
     </div>
 
+    <!-- PRODUCTS LIST -->
+    <div id="page-products" style="display:none;">
+        <div id="products-container">
+            <div class="state-box"><div class="spinner"></div><p>Завантаження...</p></div>
+        </div>
+        <div class="pagination" id="pagination" style="display:none;">
+            <button id="btnPrev" onclick="changePage(-1)" disabled>← Назад</button>
+            <span id="pageInfo"></span>
+            <button id="btnNext" onclick="changePage(1)">Далі →</button>
+        </div>
+    </div>
+
+    <!-- PRODUCT DETAIL -->
     <div id="page-detail">
         <div id="detail-img-wrap" class="detail-img-wrap"><div class="spinner"></div></div>
         <div class="detail-body">
@@ -343,23 +418,22 @@
             <div class="detail-sku" id="detail-sku"></div>
             <div class="detail-price-row">
                 <div class="detail-price" id="detail-price"></div>
-                <div class="detail-presence" id="detail-presence"></div>
+                <div class="detail-presence-badge" id="detail-presence"></div>
             </div>
             <div class="detail-desc-title" id="detail-desc-title" style="display:none;">Опис</div>
             <div class="detail-desc" id="detail-desc"></div>
         </div>
         <div class="detail-actions">
-            <button class="btn-favorite" id="btnFavorite" onclick="toggleFavorite()">❤️</button>
-            <button class="btn-cart" onclick="addToCart()">🛒 В кошик</button>
-            <button class="btn-order" onclick="orderNow()">Замовити</button>
+            <button class="btn-fav-detail" id="btnFavDetail" onclick="toggleFavorite()">♡</button>
+            <button class="btn-cart-detail" onclick="addToCart()">🛒 Додати в кошик</button>
         </div>
     </div>
 
     <div class="bottom-nav">
-        <div class="nav-item active" onclick="goHome()"><span class="nav-icon">🏠</span>Каталог</div>
-        <div class="nav-item"><span class="nav-icon">❤️</span>Обране</div>
-        <div class="nav-item"><span class="nav-icon">🛒</span>Кошик</div>
-        <div class="nav-item"><span class="nav-icon">👤</span>Кабінет</div>
+        <div class="nav-item active" id="nav-catalog" onclick="goHome()"><span class="nav-icon">🏠</span>Каталог</div>
+        <div class="nav-item" id="nav-fav" onclick="showFavorites()"><span class="nav-icon">♡</span>Обране</div>
+        <div class="nav-item" id="nav-cart" onclick="showCart()"><span class="nav-icon">🛒</span>Кошик</div>
+        <div class="nav-item" id="nav-profile"><span class="nav-icon">👤</span>Кабінет</div>
     </div>
 
     <div class="toast" id="toast"></div>
@@ -373,41 +447,55 @@
         const LIMIT = 20;
         let currentPage = 1;
         let isSearchMode = false;
+        let lastSearchQuery = '';
         let currentProductId = null;
-        let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
-        let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        let favorites = JSON.parse(localStorage.getItem('iradius_favorites') || '[]');
+        let cart = JSON.parse(localStorage.getItem('iradius_cart') || '[]');
 
-        // --- FETCH IMAGE AS BLOB ---
+        // --- IMAGE BLOB ---
         async function loadImageBlob(rawUrl) {
             try {
-                const proxyUrl = SERVER_URL + '/image?url=' + encodeURIComponent(rawUrl);
-                const res = await fetch(proxyUrl, {
+                const res = await fetch(SERVER_URL + '/image?url=' + encodeURIComponent(rawUrl), {
                     headers: { "ngrok-skip-browser-warning": "1" }
                 });
                 const blob = await res.blob();
                 return URL.createObjectURL(blob);
-            } catch (e) {
-                return null;
-            }
+            } catch { return null; }
         }
 
-        // --- NAVIGATION ---
-        function goHome() {
-            document.getElementById('page-main').style.display = 'block';
+        // --- PAGES ---
+        function showPage(name) {
+            document.getElementById('page-main').style.display = 'none';
+            document.getElementById('page-products').style.display = 'none';
             document.getElementById('page-detail').style.display = 'none';
-            document.getElementById('btnBack').style.display = 'none';
-            document.getElementById('headerSub').textContent = 'Стоматологічні матеріали та обладнання';
+            if (name === 'main') document.getElementById('page-main').style.display = 'block';
+            if (name === 'products') document.getElementById('page-products').style.display = 'block';
+            if (name === 'detail') document.getElementById('page-detail').style.display = 'block';
         }
 
-        function goBack() { goHome(); }
+        function setNav(active) {
+            ['nav-catalog','nav-fav','nav-cart','nav-profile'].forEach(id => {
+                document.getElementById(id).classList.remove('active');
+            });
+            document.getElementById(active).classList.add('active');
+        }
 
-        function showTab(tabName, el) {
-            document.getElementById('tab-catalog').style.display = 'none';
-            document.getElementById('tab-products').style.display = 'none';
-            document.getElementById('tab-' + tabName).style.display = 'block';
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            if (el) el.classList.add('active');
-            if (tabName === 'products' && !isSearchMode) loadProducts(1);
+        function goHome() {
+            showPage('main');
+            document.getElementById('btnBack').style.display = 'none';
+            document.getElementById('headerTitle').textContent = '🦷 IRadius Dental Shop';
+            isSearchMode = false;
+            setNav('nav-catalog');
+        }
+
+        function goBack() {
+            if (document.getElementById('page-detail').style.display !== 'none') {
+                showPage('products');
+                document.getElementById('headerTitle').textContent = lastSearchQuery || 'Товари';
+                document.getElementById('btnBack').style.display = 'block';
+            } else {
+                goHome();
+            }
         }
 
         // --- SEARCH ---
@@ -415,116 +503,130 @@
             const q = document.getElementById('searchInput').value.trim();
             if (!q) return;
             isSearchMode = true;
-            showTab('products', document.querySelectorAll('.tab')[1]);
+            lastSearchQuery = q;
+            showPage('products');
+            document.getElementById('btnBack').style.display = 'block';
+            document.getElementById('headerTitle').textContent = 'Пошук: ' + q;
+            setNav('nav-catalog');
             searchProducts(q);
         }
 
         function searchCategory(q) {
-            document.getElementById('searchInput').value = q;
+            document.getElementById('searchInput').value = '';
             isSearchMode = true;
-            showTab('products', document.querySelectorAll('.tab')[1]);
+            lastSearchQuery = q;
+            showPage('products');
+            document.getElementById('btnBack').style.display = 'block';
+            document.getElementById('headerTitle').textContent = q;
+            setNav('nav-catalog');
             searchProducts(q);
+        }
+
+        function loadAllProducts() {
+            isSearchMode = false;
+            lastSearchQuery = '';
+            document.getElementById('headerTitle').textContent = 'Всі товари';
+            document.getElementById('btnBack').style.display = 'block';
+            showPage('products');
+            setNav('nav-catalog');
+            loadProducts(1);
         }
 
         document.getElementById('searchInput').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') doSearch();
         });
 
-        // --- LOAD PRODUCTS ---
+        // --- LOAD ---
         async function loadProducts(page) {
             currentPage = page;
-            isSearchMode = false;
             showLoading();
             try {
-                const res = await fetch(
-                    SERVER_URL + '/products?limit=' + LIMIT + '&page=' + page,
-                    { headers: { "ngrok-skip-browser-warning": "1" } }
-                );
+                const res = await fetch(SERVER_URL + '/products?limit=' + LIMIT + '&page=' + page, {
+                    headers: { "ngrok-skip-browser-warning": "1" }
+                });
                 const data = await res.json();
                 await renderProducts(data.products || []);
                 updatePagination(data.products ? data.products.length : 0);
-            } catch (e) {
-                showError("Не вдалося завантажити товари.");
-            }
+            } catch { showError("Не вдалося завантажити товари."); }
         }
 
         async function searchProducts(q) {
             showLoading();
             hidePagination();
             try {
-                const res = await fetch(
-                    SERVER_URL + '/products/search?q=' + encodeURIComponent(q) + '&limit=50',
-                    { headers: { "ngrok-skip-browser-warning": "1" } }
-                );
+                const res = await fetch(SERVER_URL + '/products/search?q=' + encodeURIComponent(q) + '&limit=50', {
+                    headers: { "ngrok-skip-browser-warning": "1" }
+                });
                 const data = await res.json();
                 const products = data.products || [];
                 await renderProducts(products);
                 if (!products.length) showEmpty('Нічого не знайдено за запитом «' + q + '»');
-            } catch (e) {
-                showError("Помилка пошуку.");
-            }
+            } catch { showError("Помилка пошуку."); }
         }
 
-        // --- RENDER LIST ---
+        // --- RENDER TILES ---
         async function renderProducts(products) {
             const container = document.getElementById('products-container');
             if (!products.length) { showEmpty("Товарів не знайдено"); return; }
 
-            // Спочатку рендеримо без фото
             let html = '<div class="products-grid">';
             for (const p of products) {
                 const price = p.price ? Math.round(parseFloat(p.price)) + ' <span>грн</span>' : '—';
+                const isFav = favorites.includes(p.id);
                 const presence = p.presence === 'available'
                     ? '<span class="presence-available">✅ В наявності</span>'
                     : '<span class="presence-unavailable">❌ Немає</span>';
-                html += '<div class="product-card" id="card-' + p.id + '" onclick="openDetail(' + p.id + ')">';
-                html += '<div class="product-img-placeholder" id="img-' + p.id + '">🦷</div>';
-                html += '<div class="product-info">';
-                html += '<div class="product-name">' + (p.name || '—') + '</div>';
-                if (p.sku) html += '<div class="product-sku">Арт: ' + p.sku + '</div>';
-                html += '<div class="product-presence">' + presence + '</div>';
+                html += '<div class="product-tile" onclick="openDetail(' + p.id + ')">';
+                html += '<div class="tile-img-wrap">';
+                html += '<div class="tile-img-placeholder" id="img-' + p.id + '">🦷</div>';
+                html += '<div class="tile-actions">';
+                html += '<button class="tile-btn tile-fav ' + (isFav ? 'active' : '') + '" id="fav-' + p.id + '" onclick="event.stopPropagation();toggleFavTile(' + p.id + ')">' + (isFav ? '❤️' : '🤍') + '</button>';
                 html += '</div>';
-                html += '<div class="product-right"><div class="product-price">' + price + '</div></div>';
+                html += '</div>';
+                html += '<div class="tile-body">';
+                html += '<div class="tile-name">' + (p.name || '—') + '</div>';
+                if (p.sku) html += '<div class="tile-sku">Арт: ' + p.sku + '</div>';
+                html += '<div class="tile-presence">' + presence + '</div>';
+                html += '<div class="tile-bottom">';
+                html += '<div class="tile-price">' + price + '</div>';
+                html += '<button class="tile-add" onclick="event.stopPropagation();addToCartById(' + p.id + ')">+</button>';
+                html += '</div>';
+                html += '</div>';
                 html += '</div>';
             }
             html += '</div>';
             container.innerHTML = html;
 
-            // Потім підвантажуємо фото для кожного товару
+            // Завантажуємо фото
             for (const p of products) {
                 const rawImg = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
                 if (!rawImg) continue;
                 const blobUrl = await loadImageBlob(rawImg);
                 if (!blobUrl) continue;
                 const el = document.getElementById('img-' + p.id);
-                if (el) {
-                    el.outerHTML = '<img class="product-img" id="img-' + p.id + '" src="' + blobUrl + '">';
-                }
+                if (el) el.outerHTML = '<img class="tile-img" id="img-' + p.id + '" src="' + blobUrl + '">';
             }
         }
 
-        // --- PRODUCT DETAIL ---
+        // --- DETAIL ---
         async function openDetail(id) {
             currentProductId = id;
-            document.getElementById('page-main').style.display = 'none';
-            document.getElementById('page-detail').style.display = 'block';
+            showPage('detail');
             document.getElementById('btnBack').style.display = 'block';
-            document.getElementById('headerSub').textContent = 'Картка товару';
+            document.getElementById('headerTitle').textContent = 'Картка товару';
             document.getElementById('detail-img-wrap').innerHTML = '<div class="spinner"></div>';
             document.getElementById('detail-name').textContent = '';
             document.getElementById('detail-price').textContent = '';
             document.getElementById('detail-desc').textContent = '';
 
             try {
-                const res = await fetch(
-                    SERVER_URL + '/products/' + id,
-                    { headers: { "ngrok-skip-browser-warning": "1" } }
-                );
+                const res = await fetch(SERVER_URL + '/products/' + id, {
+                    headers: { "ngrok-skip-browser-warning": "1" }
+                });
                 const data = await res.json();
                 const p = data.product;
                 if (!p) { document.getElementById('detail-name').textContent = 'Товар не знайдено'; return; }
 
-                // Фото через blob
                 const rawImg = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
                 if (rawImg) {
                     const blobUrl = await loadImageBlob(rawImg);
@@ -543,10 +645,10 @@
                 const presEl = document.getElementById('detail-presence');
                 if (p.presence === 'available') {
                     presEl.textContent = '✅ В наявності';
-                    presEl.className = 'detail-presence available';
+                    presEl.className = 'detail-presence-badge available';
                 } else {
                     presEl.textContent = '❌ Немає';
-                    presEl.className = 'detail-presence unavailable';
+                    presEl.className = 'detail-presence-badge unavailable';
                 }
 
                 const desc = p.description || '';
@@ -557,37 +659,85 @@
                     document.getElementById('detail-desc-title').style.display = 'none';
                 }
 
-                updateFavoriteBtn();
-            } catch (e) {
+                updateFavDetailBtn();
+            } catch {
                 document.getElementById('detail-name').textContent = 'Помилка завантаження';
             }
         }
 
-        // --- FAVORITE ---
-        function toggleFavorite() {
-            const idx = favorites.indexOf(currentProductId);
-            if (idx === -1) { favorites.push(currentProductId); showToast('Додано в обране ❤️'); }
-            else { favorites.splice(idx, 1); showToast('Видалено з обраного'); }
-            localStorage.setItem('favorites', JSON.stringify(favorites));
-            updateFavoriteBtn();
+        // --- FAVORITES ---
+        function toggleFavTile(id) {
+            const idx = favorites.indexOf(id);
+            const btn = document.getElementById('fav-' + id);
+            if (idx === -1) {
+                favorites.push(id);
+                if (btn) { btn.textContent = '❤️'; btn.classList.add('active'); }
+                showToast('Додано в обране ❤️');
+            } else {
+                favorites.splice(idx, 1);
+                if (btn) { btn.textContent = '🤍'; btn.classList.remove('active'); }
+                showToast('Видалено з обраного');
+            }
+            localStorage.setItem('iradius_favorites', JSON.stringify(favorites));
         }
 
-        function updateFavoriteBtn() {
-            const btn = document.getElementById('btnFavorite');
-            btn.classList.toggle('active', favorites.includes(currentProductId));
+        function toggleFavorite() {
+            toggleFavTile(currentProductId);
+            updateFavDetailBtn();
+        }
+
+        function updateFavDetailBtn() {
+            const btn = document.getElementById('btnFavDetail');
+            const isFav = favorites.includes(currentProductId);
+            btn.textContent = isFav ? '❤️' : '♡';
+            btn.classList.toggle('active', isFav);
         }
 
         // --- CART ---
-        function addToCart() {
-            if (!cart.includes(currentProductId)) {
-                cart.push(currentProductId);
-                localStorage.setItem('cart', JSON.stringify(cart));
+        function addToCartById(id) {
+            if (!cart.includes(id)) {
+                cart.push(id);
+                localStorage.setItem('iradius_cart', JSON.stringify(cart));
             }
             showToast('Додано в кошик 🛒');
         }
 
-        function orderNow() {
-            tg.openLink('https://iradius.com.ua/p' + currentProductId);
+        function addToCart() { addToCartById(currentProductId); }
+
+        // --- FAVORITES PAGE (заглушка) ---
+        function showFavorites() {
+            setNav('nav-fav');
+            showPage('products');
+            document.getElementById('btnBack').style.display = 'block';
+            document.getElementById('headerTitle').textContent = '❤️ Обране';
+            hidePagination();
+            if (!favorites.length) {
+                showEmpty('Ви ще нічого не додали в обране');
+                return;
+            }
+            showLoading();
+            Promise.all(favorites.map(id =>
+                fetch(SERVER_URL + '/products/' + id, { headers: { "ngrok-skip-browser-warning": "1" } })
+                    .then(r => r.json()).then(d => d.product).catch(() => null)
+            )).then(products => renderProducts(products.filter(Boolean)));
+        }
+
+        // --- CART PAGE (заглушка) ---
+        function showCart() {
+            setNav('nav-cart');
+            showPage('products');
+            document.getElementById('btnBack').style.display = 'block';
+            document.getElementById('headerTitle').textContent = '🛒 Кошик';
+            hidePagination();
+            if (!cart.length) {
+                showEmpty('Кошик порожній');
+                return;
+            }
+            showLoading();
+            Promise.all(cart.map(id =>
+                fetch(SERVER_URL + '/products/' + id, { headers: { "ngrok-skip-browser-warning": "1" } })
+                    .then(r => r.json()).then(d => d.product).catch(() => null)
+            )).then(products => renderProducts(products.filter(Boolean)));
         }
 
         // --- PAGINATION ---
@@ -619,7 +769,7 @@
             const t = document.getElementById('toast');
             t.textContent = msg;
             t.classList.add('show');
-            setTimeout(function() { t.classList.remove('show'); }, 2000);
+            setTimeout(() => t.classList.remove('show'), 2000);
         }
     </script>
 </body>
