@@ -273,6 +273,22 @@
         tg.ready();
         tg.expand();
 
+        // Безпечний вібровідгук (працює тільки на мобільному, версія 6.1+)
+        function haptic(style) {
+            try {
+                if (tg.HapticFeedback && tg.HapticFeedback.impactOccurred) {
+                    tg.HapticFeedback.impactOccurred(style);
+                }
+            } catch (e) {}
+        }
+        function hapticSuccess() {
+            try {
+                if (tg.HapticFeedback && tg.HapticFeedback.notificationOccurred) {
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
+            } catch (e) {}
+        }
+
         const SERVER_URL = "https://thumb-scrubbed-unsent.ngrok-free.dev";
         const LIMIT = 20;
         const H = { "ngrok-skip-browser-warning": "1" };
@@ -614,7 +630,7 @@
                         const safeName = name.replace(/'/g, "\'");
                         ctrl.outerHTML = '<button class="tile-add" id="add-' + id + '" onclick="event.stopPropagation();tileChangeQty(' + id + ', 1, \'' + safeName + '\', ' + price + ', \'' + safeImg + '\')">+</button>';
                     }
-                    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+                    haptic('light');
                     return;
                 }
             } else {
@@ -622,7 +638,7 @@
                 saveCart();
                 updateBadges();
                 showToast('Додано в кошик 🛒');
-                if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+                haptic('medium');
                 // Replace + with qty ctrl
                 const btn = document.getElementById('add-' + id);
                 if (btn) {
@@ -634,7 +650,7 @@
             }
             saveCart();
             updateBadges();
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            haptic('light');
             const input = document.getElementById('qty-input-' + id);
             if (input) input.value = existing.qty;
         }
@@ -663,7 +679,7 @@
             document.getElementById('qty-modal-name').textContent = name;
             document.getElementById('qty-modal-input').value = existing ? existing.qty : 1;
             document.getElementById('qty-modal').style.display = 'flex';
-            if (tg.HapticFeedback) if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            haptic('light');
         }
 
         function closeQtyModal() {
@@ -689,7 +705,7 @@
             updateBadges();
             closeQtyModal();
             showToast('Додано в кошик 🛒');
-            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            hapticSuccess();
             // Оновлюємо кнопку
             const btn = document.getElementById('add-' + id);
             if (btn) btn.textContent = qty;
@@ -706,7 +722,7 @@
             saveCart();
             updateBadges();
             showToast('Додано в кошик 🛒');
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+            haptic('medium');
             const btn = document.querySelector('[onclick*="quickAddToCart(' + id + ',"]');
             if (btn) btn.textContent = '✓';
         }
@@ -763,12 +779,12 @@
                 favorites.push(id);
                 if (btn) { btn.textContent = '❤️'; btn.classList.add('active'); }
                 showToast('Додано в обране ❤️');
-                if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+                haptic('light');
             } else {
                 favorites.splice(idx, 1);
                 if (btn) { btn.textContent = '🤍'; btn.classList.remove('active'); }
                 showToast('Видалено з обраного');
-                if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+                haptic('light');
             }
             localStorage.setItem('ir_favorites', JSON.stringify(favorites));
             updateBadges();
