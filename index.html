@@ -447,6 +447,7 @@
             isSearchMode = false;
             showPage('products');
             document.getElementById('btnBack').style.display = 'block';
+            document.getElementById('sort-bar').style.display = 'flex';
             const groupName = groupStack.length > 0 ? groupStack[groupStack.length-1].name : 'Товари';
             document.getElementById('headerTitle').textContent = groupName;
             setNav('nav-catalog');
@@ -482,17 +483,41 @@
         function doSearch() {
             const q = document.getElementById('searchInput').value.trim();
             if (!q) return;
+            clearTimeout(searchTimer);
             isSearchMode = true;
             lastSearchQuery = q;
             showPage('products');
             document.getElementById('btnBack').style.display = 'block';
             document.getElementById('headerTitle').textContent = 'Пошук: ' + q;
+            document.getElementById('sort-bar').style.display = 'none';
             setNav('nav-catalog');
             hidePagination();
             searchProducts(q);
         }
 
-        document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+        let searchTimer = null;
+        document.getElementById('searchInput').addEventListener('input', function() {
+            clearTimeout(searchTimer);
+            const q = this.value.trim();
+            if (!q) {
+                // Якщо поле очищено — повертаємось до каталогу
+                if (isSearchMode) goHome();
+                return;
+            }
+            if (q.length < 2) return;
+            searchTimer = setTimeout(() => {
+                isSearchMode = true;
+                lastSearchQuery = q;
+                showPage('products');
+                document.getElementById('btnBack').style.display = 'block';
+                document.getElementById('headerTitle').textContent = 'Пошук: ' + q;
+                document.getElementById('sort-bar').style.display = 'none';
+                setNav('nav-catalog');
+                hidePagination();
+                searchProducts(q);
+            }, 400);
+        });
+        document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(searchTimer); doSearch(); } });
 
         // --- LOAD PRODUCTS ---
         async function loadProducts(page, groupId) {
