@@ -737,6 +737,23 @@
             const npInput = document.getElementById('f-np');
             npInput.disabled = false;
             npInput.value = '';
+            // Одразу завантажуємо всі відділення
+            loadAllWarehouses();
+        }
+
+        async function loadAllWarehouses() {
+            const list = document.getElementById('np-list');
+            if (!cityRef) return;
+            try {
+                const res = await fetch(SERVER_URL + '/np/warehouses?city_ref=' + cityRef + '&q=', { headers: H });
+                const data = await res.json();
+                const results = data.results || [];
+                if (!results.length) { list.style.display = 'none'; return; }
+                list.innerHTML = results.map(r =>
+                    '<div class="autocomplete-item" onclick="selectWarehouse(\'' + r.name.replace(/\'/g, "\\'") + '\')">' + r.name + '</div>'
+                ).join('');
+                list.style.display = 'block';
+            } catch { list.style.display = 'none'; }
         }
 
         function searchWarehouse(q) {
