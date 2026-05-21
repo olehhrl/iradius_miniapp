@@ -99,8 +99,8 @@
         .detail-desc { font-size: 13px; color: #555; line-height: 1.6; }
         .detail-desc * { max-width: 100%; }
         .detail-actions { position: fixed; bottom: 60px; left: 0; right: 0; background: var(--white); border-top: 1px solid var(--border); padding: 12px 16px; display: flex; gap: 10px; align-items: center; }
-        .btn-fav-detail { width: 48px; height: 48px; border-radius: 12px; border: 2px solid var(--border); background: var(--white); font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; color: #ddd; }
-        .btn-fav-detail.active { border-color: var(--red); background: #fff0f0; color: var(--red); }
+        .btn-fav-detail { width: 36px; height: 36px; border-radius: 50%; border: none; background: none; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; color: #ddd; padding: 0; }
+        .btn-fav-detail.active { color: var(--red); }
         .btn-cart-detail { flex: 1; padding: 14px; background: var(--teal); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; }
 
         /* CART PAGE */
@@ -209,14 +209,16 @@
             <div class="detail-sku" id="detail-sku"></div>
             <div class="detail-price-row">
                 <div class="detail-price" id="detail-price"></div>
-                <div class="detail-presence-badge" id="detail-presence"></div>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <button class="btn-fav-detail" id="btnFavDetail" onclick="toggleFavorite()">♡</button>
+                    <div class="detail-presence-badge" id="detail-presence"></div>
+                </div>
             </div>
             <div class="detail-desc-title" id="detail-desc-title" style="display:none;">Опис</div>
             <div class="detail-desc" id="detail-desc"></div>
         </div>
         <div class="detail-actions">
-            <button class="btn-fav-detail" id="btnFavDetail" onclick="toggleFavorite()">♡</button>
-            <button class="btn-cart-detail" onclick="addToCart()">🛒 Додати в кошик</button>
+            <button class="btn-cart-detail" style="width:100%" onclick="addToCart()">🛒 Додати в кошик</button>
         </div>
     </div>
 
