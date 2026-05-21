@@ -523,6 +523,7 @@
             saveCart();
             updateBadges();
             showToast('Додано в кошик 🛒');
+            tg.HapticFeedback.impactOccurred('medium');
             const btn = document.querySelector('[onclick*="quickAddToCart(' + id + ',"]');
             if (btn) btn.textContent = '✓';
         }
@@ -579,10 +580,12 @@
                 favorites.push(id);
                 if (btn) { btn.textContent = '❤️'; btn.classList.add('active'); }
                 showToast('Додано в обране ❤️');
+                tg.HapticFeedback.impactOccurred('light');
             } else {
                 favorites.splice(idx, 1);
                 if (btn) { btn.textContent = '🤍'; btn.classList.remove('active'); }
                 showToast('Видалено з обраного');
+                tg.HapticFeedback.impactOccurred('light');
             }
             localStorage.setItem('ir_favorites', JSON.stringify(favorites));
             updateBadges();
@@ -626,11 +629,36 @@
             localStorage.setItem('ir_cart', JSON.stringify(cart));
         }
 
-        function showCart() {
+        async function showCart() {
             setNav('nav-cart');
             showPage('cart');
             document.getElementById('btnBack').style.display = 'block';
             document.getElementById('headerTitle').textContent = '🛒 Кошик';
+            // Оновлюємо ціни і наявність
+            if (cart.length) {
+                try {
+                    const ids = cart.map(i => i.id);
+                    const res = await fetch(SERVER_URL + '/cart/refresh', {
+                        method: 'POST',
+                        headers: { ...H, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ids })
+                    });
+                    const data = await res.json();
+                    for (const updated of data.products) {
+                        const item = cart.find(i => i.id === updated.id);
+                        if (item) {
+                            if (updated.price && updated.price !== item.price) {
+                                item.priceChanged = item.price !== updated.price;
+                                item.price = updated.price;
+                            }
+                            item.presence = updated.presence;
+                            if (updated.presence === 'unavailable') item.unavailable = true;
+                            else item.unavailable = false;
+                        }
+                    }
+                    saveCart();
+                } catch(e) { console.log('Cart refresh error:', e); }
+            }
             renderCart();
         }
 
@@ -649,11 +677,20 @@
             for (const item of cart) {
                 const itemTotal = item.price * item.qty;
                 total += itemTotal;
-                html += '<div class="cart-item">';
-                html += '<div class="cart-item-img-placeholder">🦷</div>';
+                const unavailableStyle = item.unavailable ? 'opacity:0.5;' : '';
+                html += '<div class="cart-item" style="' + unavailableStyle + '">';
+                if (item.image) {
+                    html += '<img class="cart-item-img" id="cart-img-' + item.id + '" src="" style="display:none">';
+                    html += '<div class="cart-item-img-placeholder" id="cart-ph-' + item.id + '">🦷</div>';
+                } else {
+                    html += '<div class="cart-item-img-placeholder">🦷</div>';
+                }
                 html += '<div class="cart-item-info">';
                 html += '<div class="cart-item-name">' + item.name + '</div>';
-                html += '<div class="cart-item-price">' + (item.price ? item.price * item.qty + ' грн' : '—') + '</div>';
+                let priceHtml = item.price ? item.price * item.qty + ' грн' : '—';
+                if (item.priceChanged) priceHtml += ' <span style="color:var(--red);font-size:10px;">↑ ціна змінилась</span>';
+                html += '<div class="cart-item-price">' + priceHtml + '</div>';
+                if (item.unavailable) html += '<div style="font-size:10px;color:var(--red);">❌ Немає в наявності</div>';
                 html += '</div>';
                 html += '<div class="cart-item-right">';
                 html += '<div class="qty-control">';
@@ -667,6 +704,21 @@
             html += '</div>';
             html += '<div class="cart-total"><span class="cart-total-label">Разом:</span><span class="cart-total-price">' + total + ' грн</span></div>';
             wrap.innerHTML = html;
+
+            // Завантажуємо фото для товарів в кошику
+            for (const item of cart) {
+                if (!item.image) continue;
+                loadImageBlob(item.image).then(blobUrl => {
+                    if (!blobUrl) return;
+                    const img = document.getElementById('cart-img-' + item.id);
+                    const ph = document.getElementById('cart-ph-' + item.id);
+                    if (img && ph) {
+                        img.src = blobUrl;
+                        img.style.display = 'block';
+                        ph.style.display = 'none';
+                    }
+                });
+            }
 
             // Форма замовлення
             const savedData = JSON.parse(localStorage.getItem('ir_order_data') || '{}');
