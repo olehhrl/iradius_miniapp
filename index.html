@@ -495,7 +495,8 @@
                 html += '<div class="tile-presence">' + presence + '</div>';
                 html += '<div class="tile-bottom">';
                 html += '<div class="tile-price">' + (price ? price + ' <span>грн</span>' : '—') + '</div>';
-                html += '<button class="tile-add" onclick="event.stopPropagation();quickAddToCart(' + p.id + ', \'' + (p.name||'').replace(/'/g,"\\'") + '\', ' + (price||0) + ')">' + (inCart ? '✓' : '+') + '</button>';
+                const rawImg2 = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
+                html += '<button class="tile-add" onclick="event.stopPropagation();quickAddToCart(' + p.id + ', \'' + (p.name||'').replace(/'/g,"\\'") + '\', ' + (price||0) + ', \'' + rawImg2 + '\')">' + (inCart ? '✓' : '+') + '</button>';
                 html += '</div></div></div>';
             }
             html += '</div>';
@@ -512,12 +513,12 @@
         }
 
         // --- QUICK ADD TO CART ---
-        function quickAddToCart(id, name, price) {
+        function quickAddToCart(id, name, price, image) {
             const existing = cart.find(i => i.id === id);
             if (existing) {
                 existing.qty += 1;
             } else {
-                cart.push({ id, name, price, qty: 1 });
+                cart.push({ id, name, price, qty: 1, image: image || '' });
             }
             saveCart();
             updateBadges();
@@ -602,7 +603,8 @@
         function addToCart() {
             if (!currentProductData) return;
             const p = currentProductData;
-            quickAddToCart(p.id, p.name, p.price ? Math.round(parseFloat(p.price)) : 0);
+            const img = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
+            quickAddToCart(p.id, p.name, p.price ? Math.round(parseFloat(p.price)) : 0, img);
         }
 
         async function showFavorites() {
