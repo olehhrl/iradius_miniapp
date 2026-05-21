@@ -575,7 +575,7 @@
                     ? '<span class="presence-available">✅ В наявності</span>'
                     : '<span class="presence-unavailable">❌ Немає</span>';
                 const rawImg2 = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
-                html += '<div class="product-tile" onclick="openDetail(' + p.id + ')">';
+                html += '<div class="product-tile" onclick="openDetail(' + p.id + ', \'' + (p.sku || '') + '\'  )">';
                 html += '<div class="tile-img-wrap">';
                 html += '<div class="tile-img-placeholder" id="img-' + p.id + '">🦷</div>';
                 html += '</div>';
@@ -733,7 +733,7 @@
         }
 
         // --- DETAIL ---
-        async function openDetail(id) {
+        async function openDetail(id, sku) {
             currentProductId = id;
             showPage('detail');
             document.getElementById('btnBack').style.display = 'block';
@@ -744,7 +744,9 @@
             document.getElementById('detail-desc').textContent = '';
 
             try {
-                const res = await fetch(SERVER_URL + '/products/' + id, { headers: H });
+                // Якщо є артикул — шукаємо по ньому (для результатів пошуку з сайту)
+                const url = sku ? SERVER_URL + '/products/sku/' + sku : SERVER_URL + '/products/' + id;
+                const res = await fetch(url, { headers: H });
                 const data = await res.json();
                 const p = data.product;
                 currentProductData = p;
