@@ -511,11 +511,12 @@
                 html += '<div class="tile-body">';
                 html += '<div class="tile-name">' + (p.name || '—') + '</div>';
                 if (p.sku) html += '<div class="tile-sku">Арт: ' + p.sku + '</div>';
+                html += '<div class="tile-presence-row" style="display:flex;align-items:center;justify-content:space-between;margin-top:3px">';
                 html += '<div class="tile-presence">' + presence + '</div>';
+                html += '<button class="tile-btn tile-fav ' + (isFav ? 'active' : '') + '" id="fav-' + p.id + '" onclick="event.stopPropagation();toggleFavTile(' + p.id + ')">' + (isFav ? '❤️' : '🤍') + '</button>';
+                html += '</div>';
                 html += '<div class="tile-bottom">';
                 html += '<div class="tile-price">' + (price ? price + ' <span>грн</span>' : '—') + '</div>';
-                html += '<div style="display:flex;gap:4px;align-items:center">';
-                html += '<button class="tile-btn tile-fav ' + (isFav ? 'active' : '') + '" id="fav-' + p.id + '" onclick="event.stopPropagation();toggleFavTile(' + p.id + ')">' + (isFav ? '❤️' : '🤍') + '</button>';
                 if (inCart) {
                     html += '<div class="tile-qty-ctrl" id="qty-ctrl-' + p.id + '" onclick="event.stopPropagation()">';
                     html += '<button class="tile-qty-btn" onclick="tileChangeQty(' + p.id + ', -1, \'' + (p.name||'').replace(/\'/g,"\\\'") + '\', ' + (price||0) + ', \'' + rawImg2.replace(/\'/g,"\\\'") + '\')">−</button>';
@@ -525,7 +526,6 @@
                 } else {
                     html += '<button class="tile-add" id="add-' + p.id + '" onclick="event.stopPropagation();tileChangeQty(' + p.id + ', 1, \'' + (p.name||'').replace(/\'/g,"\\\'") + '\', ' + (price||0) + ', \'' + rawImg2.replace(/\'/g,"\\\'") + '\')">+</button>';
                 }
-                html += '</div>';
                 html += '</div></div></div>';
             }
             html += '</div>';
