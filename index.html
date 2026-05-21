@@ -605,10 +605,15 @@
             for (const p of products) {
                 const rawImg = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
                 if (!rawImg) continue;
-                const blobUrl = await loadImageBlob(rawImg);
-                if (!blobUrl) continue;
                 const el = document.getElementById('img-' + p.id);
-                if (el) el.outerHTML = '<img class="tile-img" id="img-' + p.id + '" src="' + blobUrl + '">';
+                if (!el) continue;
+                // Якщо фото з сайту (iradius.com.ua) — використовуємо напряму
+                if (rawImg.startsWith('https://iradius.com.ua')) {
+                    el.outerHTML = '<img class="tile-img" id="img-' + p.id + '" src="' + rawImg + '">';
+                } else {
+                    const blobUrl = await loadImageBlob(rawImg);
+                    if (blobUrl) el.outerHTML = '<img class="tile-img" id="img-' + p.id + '" src="' + blobUrl + '">';
+                }
             }
         }
 
