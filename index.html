@@ -19,12 +19,13 @@
             --text-muted: #888;
             --border: #E0EDEC;
             --shadow: 0 2px 8px rgba(0,164,153,0.10);
+            --red: #e74c3c;
         }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-        .header { background: var(--teal); color: white; padding: 8px 16px; display: flex; align-items: center; justify-content: center; position: sticky; top: 0; z-index: 200; }
+        .header { background: var(--teal); color: white; padding: 8px 16px; display: flex; align-items: center; justify-content: center; position: sticky; top: 0; z-index: 200; min-height: 37px; }
         .header-title { font-size: 16px; font-weight: 700; }
-        .header-back { position: absolute; left: 12px; background: none; border: none; color: white; font-size: 22px; cursor: pointer; display: none; }
+        .header-back { position: absolute; left: 12px; background: none; border: none; color: white; font-size: 22px; cursor: pointer; display: none; line-height: 1; }
 
         .search-wrap { position: sticky; top: 37px; z-index: 190; background: var(--white); padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; gap: 8px; }
         .search-wrap input { flex: 1; padding: 9px 14px; border: 1.5px solid var(--border); border-radius: 20px; font-size: 14px; background: var(--bg); outline: none; }
@@ -34,7 +35,6 @@
         .content { padding-bottom: 70px; }
         .section-title { padding: 14px 14px 8px; font-size: 14px; font-weight: 700; color: var(--teal-dark); text-transform: uppercase; letter-spacing: 0.5px; }
 
-        /* BREADCRUMB */
         .breadcrumb { padding: 8px 14px; font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
         .breadcrumb span { cursor: pointer; color: var(--teal); }
         .breadcrumb .sep { color: var(--border); }
@@ -42,11 +42,14 @@
 
         /* CATEGORIES */
         .categories-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 0 14px 14px; }
-        .category-card { background: var(--white); border-radius: 14px; padding: 14px 8px 10px; text-align: center; box-shadow: var(--shadow); cursor: pointer; transition: transform 0.15s; border: 1.5px solid var(--border); }
+        .category-card { background: var(--white); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); cursor: pointer; transition: transform 0.15s; border: 1.5px solid var(--border); display: flex; flex-direction: column; }
         .category-card:active { transform: scale(0.96); }
-        .category-card .icon { font-size: 26px; margin-bottom: 6px; }
-        .category-card .name { font-size: 11px; font-weight: 600; color: var(--teal-dark); line-height: 1.3; }
-        .category-card .count { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+        .category-img-wrap { width: 100%; aspect-ratio: 1; background: var(--bg); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .category-img { width: 100%; height: 100%; object-fit: cover; }
+        .category-img-placeholder { font-size: 28px; }
+        .category-label { padding: 6px 6px 8px; text-align: center; }
+        .category-label .name { font-size: 10px; font-weight: 600; color: var(--teal-dark); line-height: 1.3; }
+        .category-label .arrow { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
 
         /* PRODUCTS GRID */
         .products-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 10px 14px; }
@@ -58,14 +61,14 @@
         .tile-actions { position: absolute; top: 6px; right: 6px; display: flex; flex-direction: column; gap: 4px; }
         .tile-btn { width: 30px; height: 30px; border-radius: 50%; border: none; cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.15); background: white; transition: transform 0.1s; }
         .tile-btn:active { transform: scale(0.9); }
-        .tile-fav { color: #ccc; }
-        .tile-fav.active { color: #e74c3c; }
+        .tile-fav { color: #ddd; }
+        .tile-fav.active { color: var(--red); }
         .tile-body { padding: 10px; flex: 1; display: flex; flex-direction: column; }
         .tile-name { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex: 1; }
         .tile-sku { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
         .tile-presence { font-size: 10px; font-weight: 500; margin-top: 3px; }
         .presence-available { color: var(--green); }
-        .presence-unavailable { color: #e74c3c; }
+        .presence-unavailable { color: var(--red); }
         .tile-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
         .tile-price { font-size: 14px; font-weight: 800; color: var(--teal); }
         .tile-price span { font-size: 10px; font-weight: 500; }
@@ -84,14 +87,46 @@
         .detail-price span { font-size: 16px; font-weight: 500; }
         .detail-presence-badge { font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 20px; }
         .detail-presence-badge.available { background: var(--green-light); color: var(--green); }
-        .detail-presence-badge.unavailable { background: #fdecea; color: #e74c3c; }
+        .detail-presence-badge.unavailable { background: #fdecea; color: var(--red); }
         .detail-desc-title { font-size: 14px; font-weight: 700; color: var(--teal-dark); margin-top: 18px; margin-bottom: 8px; }
         .detail-desc { font-size: 13px; color: #555; line-height: 1.6; }
         .detail-desc * { max-width: 100%; }
         .detail-actions { position: fixed; bottom: 60px; left: 0; right: 0; background: var(--white); border-top: 1px solid var(--border); padding: 12px 16px; display: flex; gap: 10px; align-items: center; }
-        .btn-fav-detail { width: 48px; height: 48px; border-radius: 12px; border: 2px solid var(--border); background: var(--white); font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
-        .btn-fav-detail.active { border-color: #e74c3c; background: #fff0f0; }
+        .btn-fav-detail { width: 48px; height: 48px; border-radius: 12px; border: 2px solid var(--border); background: var(--white); font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; color: #ddd; }
+        .btn-fav-detail.active { border-color: var(--red); background: #fff0f0; color: var(--red); }
         .btn-cart-detail { flex: 1; padding: 14px; background: var(--teal); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; }
+
+        /* CART PAGE */
+        #page-cart { display: none; padding-bottom: 70px; }
+        .cart-items { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+        .cart-item { background: var(--white); border-radius: 12px; padding: 12px; display: flex; gap: 10px; align-items: center; box-shadow: var(--shadow); border: 1.5px solid var(--border); }
+        .cart-item-img { width: 60px; height: 60px; object-fit: contain; border-radius: 8px; background: var(--bg); flex-shrink: 0; }
+        .cart-item-img-placeholder { width: 60px; height: 60px; border-radius: 8px; background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+        .cart-item-info { flex: 1; min-width: 0; }
+        .cart-item-name { font-size: 12px; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .cart-item-price { font-size: 13px; font-weight: 700; color: var(--teal); margin-top: 4px; }
+        .cart-item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+        .qty-control { display: flex; align-items: center; gap: 6px; }
+        .qty-btn { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--teal); background: white; color: var(--teal); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
+        .qty-num { font-size: 14px; font-weight: 700; min-width: 20px; text-align: center; }
+        .cart-item-remove { background: none; border: none; color: #ccc; font-size: 18px; cursor: pointer; }
+        .cart-total { padding: 14px 14px 0; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); margin: 0 14px; }
+        .cart-total-label { font-size: 15px; font-weight: 600; }
+        .cart-total-price { font-size: 22px; font-weight: 800; color: var(--teal); }
+
+        /* ORDER FORM */
+        .order-form { padding: 16px 14px; display: flex; flex-direction: column; gap: 10px; }
+        .form-title { font-size: 15px; font-weight: 700; color: var(--teal-dark); }
+        .form-input { padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 14px; background: var(--white); outline: none; width: 100%; }
+        .form-input:focus { border-color: var(--teal); }
+        .form-input.error { border-color: var(--red); }
+        .form-error { font-size: 11px; color: var(--red); margin-top: -6px; display: none; }
+        .form-error.show { display: block; }
+        .btn-order-submit { padding: 15px; background: var(--teal); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; width: 100%; margin-top: 6px; }
+        .btn-order-submit:disabled { background: #ccc; cursor: default; }
+
+        /* FAVORITES PAGE */
+        #page-favorites { display: none; padding-bottom: 70px; }
 
         .state-box { text-align: center; padding: 40px 20px; color: var(--text-muted); }
         .state-box .icon { font-size: 40px; margin-bottom: 12px; }
@@ -105,12 +140,21 @@
         #pageInfo { align-self: center; font-size: 13px; color: var(--text-muted); }
 
         .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--white); border-top: 1px solid var(--border); display: flex; padding: 6px 0 4px; z-index: 150; }
-        .nav-item { flex: 1; text-align: center; padding: 4px; cursor: pointer; color: var(--text-muted); font-size: 10px; font-weight: 500; }
+        .nav-item { flex: 1; text-align: center; padding: 4px; cursor: pointer; color: var(--text-muted); font-size: 10px; font-weight: 500; position: relative; }
         .nav-item.active { color: var(--teal); }
         .nav-item .nav-icon { font-size: 20px; display: block; margin-bottom: 2px; }
+        .nav-badge { position: absolute; top: 0; right: calc(50% - 18px); background: var(--red); color: white; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 10px; min-width: 16px; text-align: center; display: none; }
+        .nav-badge.show { display: block; }
 
         .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #1A1A1A; color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; z-index: 999; opacity: 0; transition: opacity 0.3s; white-space: nowrap; pointer-events: none; }
         .toast.show { opacity: 1; }
+
+        /* SUCCESS */
+        .success-box { text-align: center; padding: 40px 20px; }
+        .success-box .icon { font-size: 60px; margin-bottom: 16px; }
+        .success-box h2 { font-size: 20px; font-weight: 700; color: var(--teal); margin-bottom: 8px; }
+        .success-box p { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+        .btn-back-catalog { margin-top: 24px; padding: 14px 28px; background: var(--teal); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -129,19 +173,17 @@
         <div id="breadcrumb-wrap"></div>
         <div class="section-title" id="catalog-title">Категорії</div>
         <div class="categories-grid" id="categories-grid">
-            <div class="state-box"><div class="spinner"></div></div>
+            <div style="grid-column:1/-1" class="state-box"><div class="spinner"></div></div>
         </div>
     </div>
 
     <!-- PRODUCTS -->
     <div id="page-products" style="display:none; padding-bottom:70px;">
-        <div id="products-container">
-            <div class="state-box"><div class="spinner"></div><p>Завантаження...</p></div>
-        </div>
+        <div id="products-container"></div>
         <div class="pagination" id="pagination" style="display:none;">
-            <button id="btnPrev" onclick="changePage(-1)" disabled>← Назад</button>
+            <button id="btnPrev" disabled>← Назад</button>
             <span id="pageInfo"></span>
-            <button id="btnNext" onclick="changePage(1)">Далі →</button>
+            <button id="btnNext">Далі →</button>
         </div>
     </div>
 
@@ -164,10 +206,21 @@
         </div>
     </div>
 
+    <!-- FAVORITES -->
+    <div id="page-favorites">
+        <div id="favorites-container"></div>
+    </div>
+
+    <!-- CART -->
+    <div id="page-cart">
+        <div id="cart-items-wrap"></div>
+        <div id="order-form-wrap"></div>
+    </div>
+
     <div class="bottom-nav">
         <div class="nav-item active" id="nav-catalog" onclick="goHome()"><span class="nav-icon">🏠</span>Каталог</div>
-        <div class="nav-item" id="nav-fav" onclick="showFavorites()"><span class="nav-icon">♡</span>Обране</div>
-        <div class="nav-item" id="nav-cart" onclick="showCart()"><span class="nav-icon">🛒</span>Кошик</div>
+        <div class="nav-item" id="nav-fav" onclick="showFavorites()"><span class="nav-icon">♡</span>Обране<span class="nav-badge" id="badge-fav"></span></div>
+        <div class="nav-item" id="nav-cart" onclick="showCart()"><span class="nav-icon">🛒</span>Кошик<span class="nav-badge" id="badge-cart"></span></div>
         <div class="nav-item" id="nav-profile"><span class="nav-icon">👤</span>Кабінет</div>
     </div>
 
@@ -180,63 +233,59 @@
 
         const SERVER_URL = "https://thumb-scrubbed-unsent.ngrok-free.dev";
         const LIMIT = 20;
-        const HEADERS = { "ngrok-skip-browser-warning": "1" };
+        const H = { "ngrok-skip-browser-warning": "1" };
 
         let currentPage = 1;
         let currentGroupId = null;
         let isSearchMode = false;
         let lastSearchQuery = '';
         let currentProductId = null;
+        let currentProductData = null;
         let allGroups = [];
-        let groupStack = []; // навігація по групах
-        let favorites = JSON.parse(localStorage.getItem('iradius_favorites') || '[]');
-        let cart = JSON.parse(localStorage.getItem('iradius_cart') || '[]');
+        let groupStack = [];
 
-        // Іконки для груп
-        const groupIcons = {
-            'композит': '🦷', 'анестез': '💉', 'відбитк': '🔬', 'інструмент': '⚙️',
-            'гігієн': '🧴', 'коронк': '👑', 'рукавичк': '🧤', 'маск': '😷',
-            'бор': '🔩', 'цемент': '🧱', 'ендодонт': '🪛', 'імплант': '🔬',
-            'хірург': '🩺', 'ортодонт': '📐', 'відбілюв': '✨', 'плівк': '📷',
-            'стомат': '🏥', 'матеріал': '📦', 'обладнан': '🖥️', 'апарат': '⚡',
-        };
-
-        function getGroupIcon(name) {
-            const lower = (name || '').toLowerCase();
-            for (const [key, icon] of Object.entries(groupIcons)) {
-                if (lower.includes(key)) return icon;
-            }
-            return '📦';
-        }
+        // Persistent storage
+        let favorites = JSON.parse(localStorage.getItem('ir_favorites') || '[]');
+        let cart = JSON.parse(localStorage.getItem('ir_cart') || '[]');
+        // cart item: {id, name, price, qty}
 
         // --- IMAGE BLOB ---
         async function loadImageBlob(rawUrl) {
             try {
-                const res = await fetch(SERVER_URL + '/image?url=' + encodeURIComponent(rawUrl), { headers: HEADERS });
+                const res = await fetch(SERVER_URL + '/image?url=' + encodeURIComponent(rawUrl), { headers: H });
                 const blob = await res.blob();
                 return URL.createObjectURL(blob);
             } catch { return null; }
         }
 
         // --- PAGES ---
+        const pages = ['page-main','page-products','page-detail','page-favorites','page-cart'];
         function showPage(name) {
-            ['page-main','page-products','page-detail'].forEach(id => {
-                document.getElementById(id).style.display = 'none';
-            });
+            pages.forEach(id => document.getElementById(id).style.display = 'none');
             document.getElementById('page-' + name).style.display = 'block';
         }
 
         function setNav(active) {
-            ['nav-catalog','nav-fav','nav-cart','nav-profile'].forEach(id => {
-                document.getElementById(id).classList.remove('active');
-            });
+            ['nav-catalog','nav-fav','nav-cart','nav-profile'].forEach(id => document.getElementById(id).classList.remove('active'));
             document.getElementById(active).classList.add('active');
         }
 
+        function updateBadges() {
+            const favBadge = document.getElementById('badge-fav');
+            const cartBadge = document.getElementById('badge-cart');
+            if (favorites.length > 0) { favBadge.textContent = favorites.length; favBadge.classList.add('show'); }
+            else favBadge.classList.remove('show');
+            const cartCount = cart.reduce((s, i) => s + i.qty, 0);
+            if (cartCount > 0) { cartBadge.textContent = cartCount; cartBadge.classList.add('show'); }
+            else cartBadge.classList.remove('show');
+        }
+
+        // --- NAV ---
         function goHome() {
             showPage('main');
             document.getElementById('btnBack').style.display = 'none';
             document.getElementById('headerTitle').textContent = '🦷 IRadius Dental Shop';
+            document.getElementById('catalog-title').textContent = 'Категорії';
             isSearchMode = false;
             groupStack = [];
             currentGroupId = null;
@@ -246,26 +295,31 @@
         }
 
         function goBack() {
-            const detail = document.getElementById('page-detail');
-            const products = document.getElementById('page-products');
-            if (detail.style.display !== 'none') {
-                showPage('products');
-                document.getElementById('btnBack').style.display = groupStack.length > 0 ? 'block' : 'block';
-            } else if (products.style.display !== 'none') {
+            if (document.getElementById('page-detail').style.display !== 'none') {
+                if (isSearchMode) {
+                    showPage('products');
+                } else if (currentGroupId) {
+                    showPage('products');
+                } else {
+                    goHome();
+                }
+                document.getElementById('headerTitle').textContent = lastSearchQuery || (groupStack.length > 0 ? groupStack[groupStack.length-1].name : '🦷 IRadius Dental Shop');
+            } else if (document.getElementById('page-products').style.display !== 'none') {
                 if (groupStack.length > 0) {
                     groupStack.pop();
                     const parentId = groupStack.length > 0 ? groupStack[groupStack.length-1].id : null;
                     currentGroupId = parentId;
                     showPage('main');
-                    const children = parentId ? getChildGroups(parentId) : getRootGroups();
-                    renderGroups(children);
+                    renderGroups(parentId ? getChildGroups(parentId) : getRootGroups());
                     renderBreadcrumb();
-                    const title = groupStack.length > 0 ? groupStack[groupStack.length-1].name : 'Категорії';
-                    document.getElementById('catalog-title').textContent = title;
+                    document.getElementById('catalog-title').textContent = groupStack.length > 0 ? groupStack[groupStack.length-1].name : 'Категорії';
                     if (groupStack.length === 0) document.getElementById('btnBack').style.display = 'none';
                 } else {
                     goHome();
                 }
+            } else if (document.getElementById('page-favorites').style.display !== 'none' ||
+                       document.getElementById('page-cart').style.display !== 'none') {
+                goHome();
             } else {
                 goHome();
             }
@@ -289,17 +343,14 @@
             let html = '<div class="breadcrumb"><span onclick="goHome()">🏠</span>';
             groupStack.forEach((g, i) => {
                 html += '<span class="sep">›</span>';
-                if (i < groupStack.length - 1) {
-                    html += '<span onclick="navigateToStackLevel(' + i + ')">' + g.name + '</span>';
-                } else {
-                    html += '<span class="current">' + g.name + '</span>';
-                }
+                if (i < groupStack.length - 1) html += '<span onclick="navToStack(' + i + ')">' + g.name + '</span>';
+                else html += '<span class="current">' + g.name + '</span>';
             });
             html += '</div>';
             wrap.innerHTML = html;
         }
 
-        function navigateToStackLevel(idx) {
+        function navToStack(idx) {
             groupStack = groupStack.slice(0, idx + 1);
             const g = groupStack[idx];
             currentGroupId = g.id;
@@ -307,27 +358,29 @@
             renderGroups(getChildGroups(g.id));
             renderBreadcrumb();
             document.getElementById('catalog-title').textContent = g.name;
-            document.getElementById('btnBack').style.display = 'block';
         }
 
         function renderGroups(groups) {
             const grid = document.getElementById('categories-grid');
-            if (!groups.length) { grid.innerHTML = '<div class="state-box"><p>Підкатегорій немає</p></div>'; return; }
+            if (!groups.length) { grid.innerHTML = '<div style="grid-column:1/-1" class="state-box"><p>Підкатегорій немає</p></div>'; return; }
             let html = '';
             for (const g of groups) {
                 const name = (g.name_multilang && g.name_multilang.uk) || g.name || '—';
-                const icon = getGroupIcon(name);
                 const hasChildren = allGroups.some(c => c.parent_group_id === g.id);
-                html += '<div class="category-card" onclick="openGroup(' + g.id + ', \'' + name.replace(/'/g, "\\'") + '\', ' + hasChildren + ')">';
-                html += '<div class="icon">' + icon + '</div>';
-                html += '<div class="name">' + name + '</div>';
-                if (hasChildren) html += '<div class="count">▶</div>';
+                const imgUrl = g.image ? SERVER_URL + '/image?url=' + encodeURIComponent(g.image) : '';
+                html += '<div class="category-card" onclick="openGroup(' + g.id + ', \'' + name.replace(/'/g, "\\'") + '\', ' + hasChildren + ')" id="cat-' + g.id + '">';
+                html += '<div class="category-img-wrap">';
+                if (imgUrl) html += '<img class="category-img" src="' + imgUrl + '" onerror="this.style.display=\'none\'">';
+                else html += '<div class="category-img-placeholder">📦</div>';
                 html += '</div>';
+                html += '<div class="category-label"><div class="name">' + name + '</div>';
+                if (hasChildren) html += '<div class="arrow">▶ підкатегорії</div>';
+                html += '</div></div>';
             }
-            // Кнопка "Всі товари в категорії" якщо є батьківська група
             if (currentGroupId) {
                 html += '<div class="category-card" onclick="loadGroupProducts(' + currentGroupId + ')">';
-                html += '<div class="icon">📋</div><div class="name">Всі товари</div></div>';
+                html += '<div class="category-img-wrap"><div class="category-img-placeholder">📋</div></div>';
+                html += '<div class="category-label"><div class="name">Всі товари</div></div></div>';
             }
             grid.innerHTML = html;
         }
@@ -338,7 +391,6 @@
             renderBreadcrumb();
             document.getElementById('btnBack').style.display = 'block';
             document.getElementById('catalog-title').textContent = name;
-
             if (hasChildren) {
                 showPage('main');
                 renderGroups(getChildGroups(id));
@@ -360,13 +412,13 @@
 
         async function loadGroupsFromServer() {
             try {
-                const res = await fetch(SERVER_URL + '/groups', { headers: HEADERS });
+                const res = await fetch(SERVER_URL + '/groups', { headers: H });
                 const data = await res.json();
                 allGroups = data.groups || [];
                 renderGroups(getRootGroups());
             } catch {
                 document.getElementById('categories-grid').innerHTML =
-                    '<div class="state-box"><div class="icon">⚠️</div><p>Помилка завантаження категорій</p></div>';
+                    '<div style="grid-column:1/-1" class="state-box"><div class="icon">⚠️</div><p>Помилка завантаження</p></div>';
             }
         }
 
@@ -384,9 +436,7 @@
             searchProducts(q);
         }
 
-        document.getElementById('searchInput').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') doSearch();
-        });
+        document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
 
         // --- LOAD PRODUCTS ---
         async function loadProducts(page, groupId) {
@@ -395,9 +445,9 @@
             try {
                 let url = SERVER_URL + '/products?limit=' + LIMIT + '&page=' + page;
                 if (groupId) url += '&group_id=' + groupId;
-                const res = await fetch(url, { headers: HEADERS });
+                const res = await fetch(url, { headers: H });
                 const data = await res.json();
-                await renderProducts(data.products || []);
+                await renderProducts(data.products || [], 'products-container');
                 updatePagination(data.products ? data.products.length : 0, groupId);
             } catch { showError("Не вдалося завантажити товари."); }
         }
@@ -406,23 +456,23 @@
             showLoading();
             hidePagination();
             try {
-                const res = await fetch(SERVER_URL + '/products/search?q=' + encodeURIComponent(q) + '&limit=50', { headers: HEADERS });
+                const res = await fetch(SERVER_URL + '/products/search?q=' + encodeURIComponent(q) + '&limit=50', { headers: H });
                 const data = await res.json();
                 const products = data.products || [];
-                await renderProducts(products);
+                await renderProducts(products, 'products-container');
                 if (!products.length) showEmpty('Нічого не знайдено за запитом «' + q + '»');
             } catch { showError("Помилка пошуку."); }
         }
 
         // --- RENDER TILES ---
-        async function renderProducts(products) {
-            const container = document.getElementById('products-container');
-            if (!products.length) { showEmpty("Товарів не знайдено"); return; }
-
+        async function renderProducts(products, containerId) {
+            const container = document.getElementById(containerId);
+            if (!products.length) { container.innerHTML = '<div class="state-box"><div class="icon">🔍</div><p>Товарів не знайдено</p></div>'; return; }
             let html = '<div class="products-grid">';
             for (const p of products) {
-                const price = p.price ? Math.round(parseFloat(p.price)) + ' <span>грн</span>' : '—';
+                const price = p.price ? Math.round(parseFloat(p.price)) : null;
                 const isFav = favorites.includes(p.id);
+                const inCart = cart.find(i => i.id === p.id);
                 const presence = p.presence === 'available'
                     ? '<span class="presence-available">✅ В наявності</span>'
                     : '<span class="presence-unavailable">❌ Немає</span>';
@@ -437,8 +487,8 @@
                 if (p.sku) html += '<div class="tile-sku">Арт: ' + p.sku + '</div>';
                 html += '<div class="tile-presence">' + presence + '</div>';
                 html += '<div class="tile-bottom">';
-                html += '<div class="tile-price">' + price + '</div>';
-                html += '<button class="tile-add" onclick="event.stopPropagation();addToCartById(' + p.id + ')">+</button>';
+                html += '<div class="tile-price">' + (price ? price + ' <span>грн</span>' : '—') + '</div>';
+                html += '<button class="tile-add" onclick="event.stopPropagation();quickAddToCart(' + p.id + ', \'' + (p.name||'').replace(/'/g,"\\'") + '\', ' + (price||0) + ')">' + (inCart ? '✓' : '+') + '</button>';
                 html += '</div></div></div>';
             }
             html += '</div>';
@@ -454,6 +504,21 @@
             }
         }
 
+        // --- QUICK ADD TO CART ---
+        function quickAddToCart(id, name, price) {
+            const existing = cart.find(i => i.id === id);
+            if (existing) {
+                existing.qty += 1;
+            } else {
+                cart.push({ id, name, price, qty: 1 });
+            }
+            saveCart();
+            updateBadges();
+            showToast('Додано в кошик 🛒');
+            const btn = document.querySelector('[onclick*="quickAddToCart(' + id + ',"]');
+            if (btn) btn.textContent = '✓';
+        }
+
         // --- DETAIL ---
         async function openDetail(id) {
             currentProductId = id;
@@ -466,9 +531,10 @@
             document.getElementById('detail-desc').textContent = '';
 
             try {
-                const res = await fetch(SERVER_URL + '/products/' + id, { headers: HEADERS });
+                const res = await fetch(SERVER_URL + '/products/' + id, { headers: H });
                 const data = await res.json();
                 const p = data.product;
+                currentProductData = p;
                 if (!p) { document.getElementById('detail-name').textContent = 'Товар не знайдено'; return; }
 
                 const rawImg = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
@@ -483,30 +549,18 @@
 
                 document.getElementById('detail-name').textContent = p.name || '—';
                 document.getElementById('detail-sku').textContent = p.sku ? 'Артикул: ' + p.sku : '';
-                document.getElementById('detail-price').innerHTML = p.price
-                    ? Math.round(parseFloat(p.price)) + ' <span>грн</span>' : '—';
+                document.getElementById('detail-price').innerHTML = p.price ? Math.round(parseFloat(p.price)) + ' <span>грн</span>' : '—';
 
                 const presEl = document.getElementById('detail-presence');
-                if (p.presence === 'available') {
-                    presEl.textContent = '✅ В наявності';
-                    presEl.className = 'detail-presence-badge available';
-                } else {
-                    presEl.textContent = '❌ Немає';
-                    presEl.className = 'detail-presence-badge unavailable';
-                }
+                presEl.textContent = p.presence === 'available' ? '✅ В наявності' : '❌ Немає';
+                presEl.className = 'detail-presence-badge ' + (p.presence === 'available' ? 'available' : 'unavailable');
 
                 const desc = p.description || '';
-                if (desc) {
-                    document.getElementById('detail-desc-title').style.display = 'block';
-                    document.getElementById('detail-desc').innerHTML = desc;
-                } else {
-                    document.getElementById('detail-desc-title').style.display = 'none';
-                }
+                if (desc) { document.getElementById('detail-desc-title').style.display = 'block'; document.getElementById('detail-desc').innerHTML = desc; }
+                else document.getElementById('detail-desc-title').style.display = 'none';
 
                 updateFavDetailBtn();
-            } catch {
-                document.getElementById('detail-name').textContent = 'Помилка завантаження';
-            }
+            } catch { document.getElementById('detail-name').textContent = 'Помилка завантаження'; }
         }
 
         // --- FAVORITES ---
@@ -522,7 +576,8 @@
                 if (btn) { btn.textContent = '🤍'; btn.classList.remove('active'); }
                 showToast('Видалено з обраного');
             }
-            localStorage.setItem('iradius_favorites', JSON.stringify(favorites));
+            localStorage.setItem('ir_favorites', JSON.stringify(favorites));
+            updateBadges();
         }
 
         function toggleFavorite() {
@@ -537,44 +592,197 @@
             btn.classList.toggle('active', isFav);
         }
 
-        function addToCartById(id) {
-            if (!cart.includes(id)) {
-                cart.push(id);
-                localStorage.setItem('iradius_cart', JSON.stringify(cart));
-            }
-            showToast('Додано в кошик 🛒');
+        function addToCart() {
+            if (!currentProductData) return;
+            const p = currentProductData;
+            quickAddToCart(p.id, p.name, p.price ? Math.round(parseFloat(p.price)) : 0);
         }
 
-        function addToCart() { addToCartById(currentProductId); }
-
-        function showFavorites() {
+        async function showFavorites() {
             setNav('nav-fav');
-            showPage('products');
+            showPage('favorites');
             document.getElementById('btnBack').style.display = 'block';
             document.getElementById('headerTitle').textContent = '❤️ Обране';
-            hidePagination();
-            if (!favorites.length) { showEmpty('Ви ще нічого не додали в обране'); return; }
-            showLoading();
-            Promise.all(favorites.map(id =>
-                fetch(SERVER_URL + '/products/' + id, { headers: HEADERS })
-                    .then(r => r.json()).then(d => d.product).catch(() => null)
-            )).then(products => renderProducts(products.filter(Boolean)));
+            const container = document.getElementById('favorites-container');
+            if (!favorites.length) { container.innerHTML = '<div class="state-box"><div class="icon">♡</div><p>Ви ще нічого не додали в обране</p></div>'; return; }
+            container.innerHTML = '<div class="state-box"><div class="spinner"></div></div>';
+            const products = await Promise.all(favorites.map(id =>
+                fetch(SERVER_URL + '/products/' + id, { headers: H }).then(r => r.json()).then(d => d.product).catch(() => null)
+            ));
+            await renderProducts(products.filter(Boolean), 'favorites-container');
+        }
+
+        // --- CART ---
+        function saveCart() {
+            localStorage.setItem('ir_cart', JSON.stringify(cart));
         }
 
         function showCart() {
             setNav('nav-cart');
-            showPage('products');
+            showPage('cart');
             document.getElementById('btnBack').style.display = 'block';
             document.getElementById('headerTitle').textContent = '🛒 Кошик';
-            hidePagination();
-            if (!cart.length) { showEmpty('Кошик порожній'); return; }
-            showLoading();
-            Promise.all(cart.map(id =>
-                fetch(SERVER_URL + '/products/' + id, { headers: HEADERS })
-                    .then(r => r.json()).then(d => d.product).catch(() => null)
-            )).then(products => renderProducts(products.filter(Boolean)));
+            renderCart();
         }
 
+        function renderCart() {
+            const wrap = document.getElementById('cart-items-wrap');
+            const formWrap = document.getElementById('order-form-wrap');
+
+            if (!cart.length) {
+                wrap.innerHTML = '<div class="state-box"><div class="icon">🛒</div><p>Кошик порожній</p></div>';
+                formWrap.innerHTML = '';
+                return;
+            }
+
+            let total = 0;
+            let html = '<div class="cart-items">';
+            for (const item of cart) {
+                const itemTotal = item.price * item.qty;
+                total += itemTotal;
+                html += '<div class="cart-item">';
+                html += '<div class="cart-item-img-placeholder">🦷</div>';
+                html += '<div class="cart-item-info">';
+                html += '<div class="cart-item-name">' + item.name + '</div>';
+                html += '<div class="cart-item-price">' + (item.price ? item.price * item.qty + ' грн' : '—') + '</div>';
+                html += '</div>';
+                html += '<div class="cart-item-right">';
+                html += '<div class="qty-control">';
+                html += '<button class="qty-btn" onclick="changeQty(' + item.id + ', -1)">−</button>';
+                html += '<span class="qty-num">' + item.qty + '</span>';
+                html += '<button class="qty-btn" onclick="changeQty(' + item.id + ', 1)">+</button>';
+                html += '</div>';
+                html += '<button class="cart-item-remove" onclick="removeFromCart(' + item.id + ')">🗑</button>';
+                html += '</div></div>';
+            }
+            html += '</div>';
+            html += '<div class="cart-total"><span class="cart-total-label">Разом:</span><span class="cart-total-price">' + total + ' грн</span></div>';
+            wrap.innerHTML = html;
+
+            // Форма замовлення
+            const savedData = JSON.parse(localStorage.getItem('ir_order_data') || '{}');
+            formWrap.innerHTML = `
+                <div class="order-form">
+                    <div class="form-title">📦 Оформлення замовлення</div>
+                    <input class="form-input" id="f-name" placeholder="Імʼя *" value="${savedData.name || ''}" oninput="validateName(this)">
+                    <div class="form-error" id="e-name">Тільки українські літери</div>
+                    <input class="form-input" id="f-surname" placeholder="Прізвище *" value="${savedData.surname || ''}" oninput="validateName(this, 'e-surname')">
+                    <div class="form-error" id="e-surname">Тільки українські літери</div>
+                    <input class="form-input" id="f-phone" placeholder="Телефон +380... *" value="${savedData.phone || ''}" oninput="validatePhone(this)">
+                    <div class="form-error" id="e-phone">Невірний формат. Приклад: +380671234567</div>
+                    <input class="form-input" id="f-city" placeholder="Місто *" value="${savedData.city || ''}">
+                    <input class="form-input" id="f-np" placeholder="Відділення Нової Пошти *" value="${savedData.np || ''}">
+                    <input class="form-input" id="f-comment" placeholder="Коментар до замовлення" value="${savedData.comment || ''}">
+                    <button class="btn-order-submit" onclick="submitOrder()">✅ Оформити замовлення</button>
+                </div>`;
+        }
+
+        function changeQty(id, delta) {
+            const item = cart.find(i => i.id === id);
+            if (!item) return;
+            item.qty += delta;
+            if (item.qty <= 0) { cart = cart.filter(i => i.id !== id); }
+            saveCart();
+            updateBadges();
+            renderCart();
+        }
+
+        function removeFromCart(id) {
+            cart = cart.filter(i => i.id !== id);
+            saveCart();
+            updateBadges();
+            renderCart();
+        }
+
+        // --- VALIDATION ---
+        function validateName(el, errId) {
+            const eId = errId || 'e-name';
+            const ok = /^[А-ЯҐЄІЇа-яґєії'\- ]*$/.test(el.value);
+            el.classList.toggle('error', !ok && el.value.length > 0);
+            document.getElementById(eId).classList.toggle('show', !ok && el.value.length > 0);
+        }
+
+        function validatePhone(el) {
+            const ok = /^\+380\d{9}$/.test(el.value.replace(/\s/g, ''));
+            el.classList.toggle('error', !ok && el.value.length > 0);
+            document.getElementById('e-phone').classList.toggle('show', !ok && el.value.length > 0);
+        }
+
+        // --- SUBMIT ORDER ---
+        async function submitOrder() {
+            const name = document.getElementById('f-name').value.trim();
+            const surname = document.getElementById('f-surname').value.trim();
+            const phone = document.getElementById('f-phone').value.trim().replace(/\s/g, '');
+            const city = document.getElementById('f-city').value.trim();
+            const np = document.getElementById('f-np').value.trim();
+            const comment = document.getElementById('f-comment').value.trim();
+
+            // Валідація
+            let hasError = false;
+            if (!name || !/^[А-ЯҐЄІЇа-яґєії'\- ]+$/.test(name)) {
+                document.getElementById('f-name').classList.add('error');
+                document.getElementById('e-name').classList.add('show');
+                hasError = true;
+            }
+            if (!surname || !/^[А-ЯҐЄІЇа-яґєії'\- ]+$/.test(surname)) {
+                document.getElementById('f-surname').classList.add('error');
+                document.getElementById('e-surname').classList.add('show');
+                hasError = true;
+            }
+            if (!phone || !/^\+380\d{9}$/.test(phone)) {
+                document.getElementById('f-phone').classList.add('error');
+                document.getElementById('e-phone').classList.add('show');
+                hasError = true;
+            }
+            if (!city) { document.getElementById('f-city').classList.add('error'); hasError = true; }
+            if (!np) { document.getElementById('f-np').classList.add('error'); hasError = true; }
+            if (hasError) { showToast('Заповніть всі поля правильно'); return; }
+
+            // Зберігаємо дані клієнта
+            localStorage.setItem('ir_order_data', JSON.stringify({ name, surname, phone, city, np, comment }));
+
+            const btn = document.querySelector('.btn-order-submit');
+            btn.disabled = true;
+            btn.textContent = 'Відправляємо...';
+
+            const orderData = {
+                name, surname, phone, city, np, comment,
+                items: cart.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty })),
+                total: cart.reduce((s, i) => s + i.price * i.qty, 0)
+            };
+
+            try {
+                const res = await fetch(SERVER_URL + '/order', {
+                    method: 'POST',
+                    headers: { ...H, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderData)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    cart = [];
+                    saveCart();
+                    updateBadges();
+                    document.getElementById('cart-items-wrap').innerHTML = `
+                        <div class="success-box">
+                            <div class="icon">✅</div>
+                            <h2>Замовлення прийнято!</h2>
+                            <p>Ми звʼяжемось з вами найближчим часом.<br>Дякуємо за покупку!</p>
+                            <button class="btn-back-catalog" onclick="goHome()">До каталогу</button>
+                        </div>`;
+                    document.getElementById('order-form-wrap').innerHTML = '';
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = '✅ Оформити замовлення';
+                    showToast('Помилка. Спробуйте ще раз.');
+                }
+            } catch {
+                btn.disabled = false;
+                btn.textContent = '✅ Оформити замовлення';
+                showToast('Помилка звʼязку. Спробуйте ще раз.');
+            }
+        }
+
+        // --- PAGINATION ---
         function updatePagination(count, groupId) {
             document.getElementById('pagination').style.display = 'flex';
             document.getElementById('btnPrev').disabled = currentPage === 1;
@@ -583,21 +791,16 @@
             document.getElementById('btnNext').onclick = () => { loadProducts(currentPage + 1, groupId); window.scrollTo(0,0); };
             document.getElementById('btnPrev').onclick = () => { loadProducts(currentPage - 1, groupId); window.scrollTo(0,0); };
         }
-
         function hidePagination() { document.getElementById('pagination').style.display = 'none'; }
-        function changePage(dir) { loadProducts(currentPage + dir, currentGroupId); window.scrollTo(0, 0); }
 
         function showLoading() {
-            document.getElementById('products-container').innerHTML =
-                '<div class="state-box"><div class="spinner"></div><p>Завантаження...</p></div>';
+            document.getElementById('products-container').innerHTML = '<div class="state-box"><div class="spinner"></div><p>Завантаження...</p></div>';
         }
         function showEmpty(msg) {
-            document.getElementById('products-container').innerHTML =
-                '<div class="state-box"><div class="icon">🔍</div><p>' + msg + '</p></div>';
+            document.getElementById('products-container').innerHTML = '<div class="state-box"><div class="icon">🔍</div><p>' + msg + '</p></div>';
         }
         function showError(msg) {
-            document.getElementById('products-container').innerHTML =
-                '<div class="state-box"><div class="icon">⚠️</div><p>' + msg + '</p></div>';
+            document.getElementById('products-container').innerHTML = '<div class="state-box"><div class="icon">⚠️</div><p>' + msg + '</p></div>';
         }
 
         function showToast(msg) {
@@ -608,6 +811,7 @@
         }
 
         // --- INIT ---
+        updateBadges();
         loadGroupsFromServer();
     </script>
 </body>
