@@ -231,6 +231,19 @@
         <div class="nav-item" id="nav-profile"><span class="nav-icon">👤</span>Кабінет</div>
     </div>
 
+
+    <!-- QTY MODAL -->
+    <div id="qty-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;align-items:flex-end;justify-content:center;" onclick="closeQtyModal()">
+        <div style="background:white;border-radius:20px 20px 0 0;padding:24px 20px;width:100%;max-width:480px;" onclick="event.stopPropagation()">
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:16px;line-height:1.3;" id="qty-modal-name"></div>
+            <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:20px;">
+                <button onclick="changeModalQty(-1)" style="width:44px;height:44px;border-radius:50%;border:2px solid var(--teal);background:white;color:var(--teal);font-size:22px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;">−</button>
+                <input type="number" id="qty-modal-input" min="1" max="999" value="1" style="width:70px;text-align:center;font-size:22px;font-weight:700;border:1.5px solid var(--border);border-radius:12px;padding:8px;outline:none;">
+                <button onclick="changeModalQty(1)" style="width:44px;height:44px;border-radius:50%;border:2px solid var(--teal);background:white;color:var(--teal);font-size:22px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;">+</button>
+            </div>
+            <button onclick="confirmQtyModal()" style="width:100%;padding:14px;background:var(--teal);color:white;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;">🛒 Додати в кошик</button>
+        </div>
+    </div>
     <div class="toast" id="toast"></div>
 
     <script>
@@ -483,20 +496,21 @@
                 const presence = p.presence === 'available'
                     ? '<span class="presence-available">✅ В наявності</span>'
                     : '<span class="presence-unavailable">❌ Немає</span>';
+                const rawImg2 = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
                 html += '<div class="product-tile" onclick="openDetail(' + p.id + ')">';
                 html += '<div class="tile-img-wrap">';
                 html += '<div class="tile-img-placeholder" id="img-' + p.id + '">🦷</div>';
-                html += '<div class="tile-actions">';
-                html += '<button class="tile-btn tile-fav ' + (isFav ? 'active' : '') + '" id="fav-' + p.id + '" onclick="event.stopPropagation();toggleFavTile(' + p.id + ')">' + (isFav ? '❤️' : '🤍') + '</button>';
-                html += '</div></div>';
+                html += '</div>';
                 html += '<div class="tile-body">';
                 html += '<div class="tile-name">' + (p.name || '—') + '</div>';
                 if (p.sku) html += '<div class="tile-sku">Арт: ' + p.sku + '</div>';
                 html += '<div class="tile-presence">' + presence + '</div>';
                 html += '<div class="tile-bottom">';
                 html += '<div class="tile-price">' + (price ? price + ' <span>грн</span>' : '—') + '</div>';
-                const rawImg2 = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
-                html += '<button class="tile-add" onclick="event.stopPropagation();quickAddToCart(' + p.id + ', \'' + (p.name||'').replace(/'/g,"\\'") + '\', ' + (price||0) + ', \'' + rawImg2 + '\')">' + (inCart ? '✓' : '+') + '</button>';
+                html += '<div style="display:flex;gap:4px;align-items:center">';
+                html += '<button class="tile-btn tile-fav ' + (isFav ? 'active' : '') + '" id="fav-' + p.id + '" onclick="event.stopPropagation();toggleFavTile(' + p.id + ')">' + (isFav ? '❤️' : '🤍') + '</button>';
+                html += '<button class="tile-add" id="add-' + p.id + '" onclick="event.stopPropagation();showQtyModal(' + p.id + ', \'' + (p.name||'').replace(/\'/g, "\\\'") + '\', ' + (price||0) + ', \'' + rawImg2.replace(/\'/g, "\\\'") + '\'  )">' + (inCart ? inCart.qty : '+') + '</button>';
+                html += '</div>';
                 html += '</div></div></div>';
             }
             html += '</div>';
@@ -512,6 +526,48 @@
             }
         }
 
+
+        // --- QTY MODAL ---
+        let qtyModalData = {};
+
+        function showQtyModal(id, name, price, image) {
+            qtyModalData = { id, name, price, image };
+            const existing = cart.find(i => i.id === id);
+            document.getElementById('qty-modal-name').textContent = name;
+            document.getElementById('qty-modal-input').value = existing ? existing.qty : 1;
+            document.getElementById('qty-modal').style.display = 'flex';
+            if (tg.HapticFeedback) if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+        }
+
+        function closeQtyModal() {
+            document.getElementById('qty-modal').style.display = 'none';
+        }
+
+        function changeModalQty(delta) {
+            const input = document.getElementById('qty-modal-input');
+            const val = parseInt(input.value) + delta;
+            if (val >= 1) input.value = val;
+        }
+
+        function confirmQtyModal() {
+            const qty = parseInt(document.getElementById('qty-modal-input').value) || 1;
+            const { id, name, price, image } = qtyModalData;
+            const existing = cart.find(i => i.id === id);
+            if (existing) {
+                existing.qty = qty;
+            } else {
+                cart.push({ id, name, price, qty, image: image || '' });
+            }
+            saveCart();
+            updateBadges();
+            closeQtyModal();
+            showToast('Додано в кошик 🛒');
+            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+            // Оновлюємо кнопку
+            const btn = document.getElementById('add-' + id);
+            if (btn) btn.textContent = qty;
+        }
+
         // --- QUICK ADD TO CART ---
         function quickAddToCart(id, name, price, image) {
             const existing = cart.find(i => i.id === id);
@@ -523,7 +579,7 @@
             saveCart();
             updateBadges();
             showToast('Додано в кошик 🛒');
-            tg.HapticFeedback.impactOccurred('medium');
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
             const btn = document.querySelector('[onclick*="quickAddToCart(' + id + ',"]');
             if (btn) btn.textContent = '✓';
         }
@@ -580,12 +636,12 @@
                 favorites.push(id);
                 if (btn) { btn.textContent = '❤️'; btn.classList.add('active'); }
                 showToast('Додано в обране ❤️');
-                tg.HapticFeedback.impactOccurred('light');
+                if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
             } else {
                 favorites.splice(idx, 1);
                 if (btn) { btn.textContent = '🤍'; btn.classList.remove('active'); }
                 showToast('Видалено з обраного');
-                tg.HapticFeedback.impactOccurred('light');
+                if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
             }
             localStorage.setItem('ir_favorites', JSON.stringify(favorites));
             updateBadges();
