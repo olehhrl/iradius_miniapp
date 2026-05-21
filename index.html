@@ -273,7 +273,8 @@
 
         // --- GROUPS ---
         function getRootGroups() {
-            return allGroups.filter(g => !g.parent_group_id);
+             const allIds = new Set(allGroups.map(g => g.id));
+             return allGroups.filter(g => !g.parent_group_id || !allIds.has(g.parent_group_id));
         }
 
         function getChildGroups(parentId) {
