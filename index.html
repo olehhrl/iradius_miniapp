@@ -72,6 +72,13 @@
         .tile-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
         .tile-price { font-size: 14px; font-weight: 800; color: var(--teal); }
         .tile-price span { font-size: 10px; font-weight: 500; }
+
+        /* INLINE QTY CONTROL */
+        .tile-qty-ctrl { display: flex; align-items: center; gap: 2px; }
+        .tile-qty-btn { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--teal); background: white; color: var(--teal); font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .tile-qty-input { width: 32px; height: 24px; text-align: center; font-size: 12px; font-weight: 700; border: 1.5px solid var(--teal); border-radius: 6px; padding: 0; outline: none; -moz-appearance: textfield; }
+        .tile-qty-input::-webkit-outer-spin-button, .tile-qty-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
         .tile-add { width: 28px; height: 28px; background: var(--teal); color: white; border: none; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; flex-shrink: 0; }
 
         /* DETAIL */
@@ -509,7 +516,15 @@
                 html += '<div class="tile-price">' + (price ? price + ' <span>грн</span>' : '—') + '</div>';
                 html += '<div style="display:flex;gap:4px;align-items:center">';
                 html += '<button class="tile-btn tile-fav ' + (isFav ? 'active' : '') + '" id="fav-' + p.id + '" onclick="event.stopPropagation();toggleFavTile(' + p.id + ')">' + (isFav ? '❤️' : '🤍') + '</button>';
-                html += '<button class="tile-add" id="add-' + p.id + '" onclick="event.stopPropagation();showQtyModal(' + p.id + ', \'' + (p.name||'').replace(/\'/g, "\\\'") + '\', ' + (price||0) + ', \'' + rawImg2.replace(/\'/g, "\\\'") + '\'  )">' + (inCart ? inCart.qty : '+') + '</button>';
+                if (inCart) {
+                    html += '<div class="tile-qty-ctrl" id="qty-ctrl-' + p.id + '" onclick="event.stopPropagation()">';
+                    html += '<button class="tile-qty-btn" onclick="tileChangeQty(' + p.id + ', -1, \'' + (p.name||'').replace(/\'/g,"\\\'") + '\', ' + (price||0) + ', \'' + rawImg2.replace(/\'/g,"\\\'") + '\')">−</button>';
+                    html += '<input class="tile-qty-input" id="qty-input-' + p.id + '" type="number" value="' + inCart.qty + '" min="0" onclick="this.select()" onchange="tileSetQty(' + p.id + ', this.value, \'' + (p.name||'').replace(/\'/g,"\\\'") + '\', ' + (price||0) + ', \'' + rawImg2.replace(/\'/g,"\\\'") + '\')">'; 
+                    html += '<button class="tile-qty-btn" onclick="tileChangeQty(' + p.id + ', 1, \'' + (p.name||'').replace(/\'/g,"\\\'") + '\', ' + (price||0) + ', \'' + rawImg2.replace(/\'/g,"\\\'") + '\')">+</button>';
+                    html += '</div>';
+                } else {
+                    html += '<button class="tile-add" id="add-' + p.id + '" onclick="event.stopPropagation();tileChangeQty(' + p.id + ', 1, \'' + (p.name||'').replace(/\'/g,"\\\'") + '\', ' + (price||0) + ', \'' + rawImg2.replace(/\'/g,"\\\'") + '\')">+</button>';
+                }
                 html += '</div>';
                 html += '</div></div></div>';
             }
@@ -526,6 +541,63 @@
             }
         }
 
+
+
+        // --- TILE QTY CONTROLS ---
+        function tileChangeQty(id, delta, name, price, image) {
+            const existing = cart.find(i => i.id === id);
+            if (existing) {
+                existing.qty += delta;
+                if (existing.qty <= 0) {
+                    cart = cart.filter(i => i.id !== id);
+                    saveCart();
+                    updateBadges();
+                    // Replace qty ctrl with + button
+                    const ctrl = document.getElementById('qty-ctrl-' + id);
+                    if (ctrl) {
+                        const safeImg = image.replace(/'/g, "\'");
+                        const safeName = name.replace(/'/g, "\'");
+                        ctrl.outerHTML = '<button class="tile-add" id="add-' + id + '" onclick="event.stopPropagation();tileChangeQty(' + id + ', 1, \'' + safeName + '\', ' + price + ', \'' + safeImg + '\')">+</button>';
+                    }
+                    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+                    return;
+                }
+            } else {
+                cart.push({ id, name, price, qty: 1, image: image || '' });
+                saveCart();
+                updateBadges();
+                showToast('Додано в кошик 🛒');
+                if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+                // Replace + with qty ctrl
+                const btn = document.getElementById('add-' + id);
+                if (btn) {
+                    const safeImg = image.replace(/'/g, "\'");
+                    const safeName = name.replace(/'/g, "\'");
+                    btn.outerHTML = '<div class="tile-qty-ctrl" id="qty-ctrl-' + id + '" onclick="event.stopPropagation()"><button class="tile-qty-btn" onclick="tileChangeQty(' + id + ', -1, \'' + safeName + '\', ' + price + ', \'' + safeImg + '\')">−</button><input class="tile-qty-input" id="qty-input-' + id + '" type="number" value="1" min="0" onclick="this.select()" onchange="tileSetQty(' + id + ', this.value, \'' + safeName + '\', ' + price + ', \'' + safeImg + '\')"><button class="tile-qty-btn" onclick="tileChangeQty(' + id + ', 1, \'' + safeName + '\', ' + price + ', \'' + safeImg + '\')">+</button></div>';
+                }
+                return;
+            }
+            saveCart();
+            updateBadges();
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+            const input = document.getElementById('qty-input-' + id);
+            if (input) input.value = existing.qty;
+        }
+
+        function tileSetQty(id, val, name, price, image) {
+            const qty = parseInt(val);
+            if (isNaN(qty) || qty < 0) return;
+            if (qty === 0) {
+                tileChangeQty(id, -999, name, price, image);
+                return;
+            }
+            const existing = cart.find(i => i.id === id);
+            if (existing) {
+                existing.qty = qty;
+                saveCart();
+                updateBadges();
+            }
+        }
 
         // --- QTY MODAL ---
         let qtyModalData = {};
