@@ -298,6 +298,15 @@
             <button onclick="confirmQtyModal()" style="width:100%;padding:14px;background:var(--teal);color:white;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;">🛒 Додати в кошик</button>
         </div>
     </div>
+    <!-- МОДАЛКА: недоступні товари при оформленні -->
+    <div id="unavail-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:600;align-items:flex-end;justify-content:center;" onclick="closeUnavailModal()">
+        <div style="background:white;border-radius:20px 20px 0 0;padding:22px 18px 18px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto;" onclick="event.stopPropagation()">
+            <div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:4px;">Неможливо оформити замовлення</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-bottom:14px;">Цих товарів зараз немає в наявності. Видаліть їх із кошика, щоб продовжити 👇</div>
+            <div id="unavail-list"></div>
+            <button onclick="closeUnavailModal()" style="margin-top:16px;width:100%;padding:13px;background:var(--teal-light);color:var(--teal-dark);border:1.5px solid var(--teal);border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">Закрити</button>
+        </div>
+    </div>
     <div class="toast" id="toast"></div>
 
     <script>
@@ -727,6 +736,49 @@
             document.getElementById('qty-modal').style.display = 'none';
         }
 
+        // --- МОДАЛКА НЕДОСТУПНИХ ТОВАРІВ ---
+        let unavailableQueue = [];
+
+        function showUnavailableModal(blocked) {
+            unavailableQueue = blocked.slice();
+            renderUnavailModal();
+            document.getElementById('unavail-modal').style.display = 'flex';
+        }
+
+        function renderUnavailModal() {
+            if (!unavailableQueue.length) { closeUnavailModal(); return; }
+            const html = unavailableQueue.map((b, idx) => {
+                const reason = b.reason === 'notfound'
+                    ? '⚠️ не знайдено в каталозі — перевірте вручну'
+                    : '❌ немає в наявності';
+                return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:13px;font-weight:600;color:var(--text);">${b.item.name}</div>
+                        <div style="font-size:11px;color:var(--red);margin-top:2px;">${reason}</div>
+                    </div>
+                    <button onclick="removeUnavailIdx(${idx})" style="flex-shrink:0;padding:8px 12px;background:var(--red);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">🗑 Видалити</button>
+                </div>`;
+            }).join('');
+            document.getElementById('unavail-list').innerHTML = html;
+        }
+
+        function removeUnavailIdx(idx) {
+            const b = unavailableQueue[idx];
+            if (b) {
+                cart = cart.filter(i => i !== b.item && String(i.id) !== String(b.item.id));
+                saveCart();
+                updateBadges();
+                renderCart();
+                unavailableQueue.splice(idx, 1);
+                haptic('light');
+            }
+            renderUnavailModal();
+        }
+
+        function closeUnavailModal() {
+            document.getElementById('unavail-modal').style.display = 'none';
+        }
+
         function changeModalQty(delta) {
             const input = document.getElementById('qty-modal-input');
             const val = parseInt(input.value) + delta;
@@ -970,53 +1022,67 @@
 
             const products = ordersProductsMap[orderId] || [];
             let added = 0;
+            const notFound = [];
 
-            // Паралельно отримуємо актуальні дані (фото, ціна) по кожному товару
+            // Для кожного товару з історії знаходимо ПРАВИЛЬНИЙ актуальний товар за назвою.
+            // Артикул із KeyCRM ненадійний (може вести на інший товар), тому передаємо
+            // і назву — fetchFreshProduct звірить її та поверне саме той товар, що замовляли.
             const results = await Promise.all(products.map(async p => {
-                try {
-                    const skuStr = String(p.sku || '').trim();
-                    let fresh = null;
-                    if (skuStr && skuStr !== '0' && skuStr !== 'undefined') {
-                        const res = await fetch(SERVER_URL + '/products/sku/' + encodeURIComponent(skuStr), { headers: H });
-                        const data = await res.json();
-                        if (data.product) fresh = data.product;
-                    }
-                    return { p, fresh };
-                } catch(e) {
-                    return { p, fresh: null };
-                }
+                const probe = { id: p.prom_id || p.sku, sku: p.sku, name: p.name };
+                const fresh = await fetchFreshProduct(probe);
+                return { p, fresh };
             }));
 
             for (const { p, fresh } of results) {
-                // Додаємо незалежно від наявності — кошик перевірить при відкритті
-                const skuStr = String(p.sku || '').trim();
-                const freshId = String((fresh && fresh.id) || '');
-                const freshSku = String((fresh && fresh.sku) || skuStr);
-
-                const existing = cart.find(i =>
-                    (freshSku && String(i.sku) === freshSku) ||
-                    (freshId && String(i.id) === freshId)
-                );
-                if (existing) {
-                    existing.qty += p.quantity;
+                if (fresh) {
+                    const fid = String(fresh.id || '');
+                    const fsku = String(fresh.sku || '');
+                    const isAvail = fresh.presence === 'available';
+                    const existing = cart.find(i =>
+                        (fsku && String(i.sku) === fsku) || (fid && String(i.id) === fid)
+                    );
+                    if (existing) {
+                        existing.qty += p.quantity;
+                        existing.unavailable = !isAvail;
+                    } else {
+                        cart.push({
+                            id: fresh.id,
+                            sku: fresh.sku || '',
+                            name: fresh.name,                       // канонічна назва з каталогу
+                            price: fresh.price || p.price,          // актуальна ціна
+                            qty: p.quantity,
+                            image: fresh.main_image || '',
+                            unavailable: !isAvail
+                        });
+                    }
+                    added++;
                 } else {
+                    // Не вдалося знайти товар у каталозі — додаємо за історією, але
+                    // позначаємо для ручної перевірки (submitOrder заблокує оформлення).
                     cart.push({
-                        id: freshId || freshSku,
-                        sku: freshSku,
-                        name: (fresh && fresh.name) || p.name,
-                        price: (fresh && fresh.price) || p.price,
+                        id: p.prom_id || p.sku || p.name,
+                        sku: String(p.sku || ''),
+                        name: p.name,
+                        price: p.price,
                         qty: p.quantity,
-                        image: (fresh && fresh.main_image) || ''
+                        image: '',
+                        unavailable: true,
+                        unverified: true
                     });
+                    notFound.push(p.name);
+                    added++;
                 }
-                added++;
             }
 
             saveCart();
             updateBadges();
             btn.disabled = false;
             btn.textContent = '🔄 Повторити замовлення';
-            showToast(`${added} товарів додано в кошик 🛒`);
+            if (notFound.length) {
+                showToast(`Додано ${added}. Перевірте наявність: ${notFound.join(', ')}`);
+            } else {
+                showToast(`${added} товарів додано в кошик 🛒`);
+            }
             hapticSuccess();
         }
 
@@ -1093,6 +1159,44 @@
             localStorage.setItem('ir_cart', JSON.stringify(cart));
         }
 
+        // Звірка назв — захист від розсинхрону артикулів (KeyCRM ≠ MODX).
+        // Артикул може вести не на той товар, тому довіряємо результату лише якщо назва збігається.
+        function namesMatch(a, b) {
+            const norm = s => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+            const x = norm(a), y = norm(b);
+            if (!x || !y) return false;
+            return x === y || x.slice(0, 20) === y.slice(0, 20) || x.includes(y) || y.includes(x);
+        }
+
+        // Знаходить актуальний товар з каталогу, що ВІДПОВІДАЄ позиції кошика за назвою.
+        // Повертає продукт (з актуальною ціною/наявністю) або null, якщо не знайдено.
+        async function fetchFreshProduct(item) {
+            const idStr = String(item.id || '').trim();
+            const skuStr = String(item.sku || '').trim();
+            const urls = [];
+            // 1) Якщо id виглядає як Prom id (7+ цифр) — пробуємо Prom за id
+            if (/^\d{7,}$/.test(idStr)) urls.push(SERVER_URL + '/products/' + idStr);
+            // 2) За артикулом (Prom і MODX мають однакові артикули, тож MODX exact надійний)
+            if (skuStr && !['0', 'undefined', 'null'].includes(skuStr))
+                urls.push(SERVER_URL + '/products/sku/' + encodeURIComponent(skuStr));
+            for (const url of urls) {
+                try {
+                    const d = await (await fetch(url, { headers: H })).json();
+                    if (d.product && namesMatch(d.product.name, item.name)) return d.product;
+                } catch (e) {}
+            }
+            // 3) Запасний варіант — пошук за назвою (артикул із KeyCRM буває ненадійний)
+            try {
+                const q = String(item.name || '').split(' ').slice(0, 4).join(' ').trim();
+                if (q.length >= 2) {
+                    const d = await (await fetch(SERVER_URL + '/products/search?q=' + encodeURIComponent(q) + '&limit=20', { headers: H })).json();
+                    const found = (d.products || []).find(p => namesMatch(p.name, item.name));
+                    if (found) return found;
+                }
+            } catch (e) {}
+            return null;
+        }
+
         async function showCart() {
             setNav('nav-cart');
             showPage('cart');
@@ -1105,26 +1209,18 @@
                     '<div class="state-box"><div class="spinner"></div><p>Перевіряємо наявність...</p></div>';
                 document.getElementById('order-form-wrap').innerHTML = '';
 
-                // Паралельна перевірка всіх товарів одночасно
-                const checks = await Promise.all([...cart].map(async item => {
-                    try {
-                        const url = item.sku
-                            ? SERVER_URL + '/products/sku/' + encodeURIComponent(item.sku)
-                            : SERVER_URL + '/products/' + item.id;
-                        const res = await fetch(url, { headers: H });
-                        const data = await res.json();
-                        return { item, fresh: data.product || null };
-                    } catch { return { item, fresh: null }; }
-                }));
+                // Паралельна перевірка всіх товарів одночасно (за назвою, не за артикулом)
+                const checks = await Promise.all([...cart].map(async item => ({
+                    item, fresh: await fetchFreshProduct(item)
+                })));
 
                 for (const { item, fresh } of checks) {
+                    // Не знайшли (можливо тимчасова помилка мережі) — не чіпаємо позначку, не видаляємо
                     if (!fresh) continue;
-                    // Оновлюємо ціну тільки якщо назва збігається (захист від розсинхрону артикулів)
-                    const namesMatch = fresh.name && item.name &&
-                        fresh.name.trim().toLowerCase().substring(0, 20) === item.name.trim().toLowerCase().substring(0, 20);
-                    if (!namesMatch) continue;
-                    const priceDiff = Math.abs(fresh.price - item.price);
-                    if (fresh.price && priceDiff > 3) {
+                    item.unverified = false;
+                    item.unavailable = fresh.presence !== 'available';
+                    // Назва вже звірена всередині fetchFreshProduct — можна оновити ціну
+                    if (fresh.price && Math.abs(fresh.price - item.price) > 3) {
                         item.priceChanged = true;
                         item.price = fresh.price;
                     }
@@ -1162,7 +1258,10 @@
                 let priceHtml = item.price ? item.price * item.qty + ' грн' : '—';
                 if (item.priceChanged) priceHtml += ' <span style="color:var(--red);font-size:10px;">↑ ціна змінилась</span>';
                 html += '<div class="cart-item-price">' + priceHtml + '</div>';
-                if (item.unavailable) html += '<div style="font-size:10px;color:var(--red);">❌ Немає в наявності</div>';
+                if (item.unavailable) {
+                    const note = item.unverified ? '⚠️ Перевірте наявність' : '❌ Немає в наявності';
+                    html += '<div style="font-size:10px;color:var(--red);">' + note + '</div>';
+                }
                 html += '</div>';
                 html += '<div class="cart-item-right">';
                 html += '<div class="qty-control">';
@@ -1383,6 +1482,29 @@
 
             const btn = document.querySelector('.btn-order-submit');
             btn.disabled = true;
+            btn.textContent = '🔎 Перевіряємо наявність...';
+
+            // === ПЕРЕВІРКА НАЯВНОСТІ ПЕРЕД ВІДПРАВКОЮ ===
+            // Звіряємо кожен товар за назвою (артикул ненадійний). Недоступні / не знайдені — блокують замовлення.
+            const checkResults = await Promise.all(cart.map(async item => {
+                const fresh = await fetchFreshProduct(item);
+                if (!fresh) return { item, reason: 'notfound' };
+                item.unverified = false;
+                item.unavailable = fresh.presence !== 'available';
+                if (fresh.price && Math.abs(fresh.price - item.price) > 3) {
+                    item.priceChanged = true;
+                    item.price = fresh.price;
+                }
+                return item.unavailable ? { item, reason: 'unavailable' } : null;
+            }));
+            const blocked = checkResults.filter(Boolean);
+            saveCart();
+            if (blocked.length) {
+                renderCart();                    // покаже сірі позиції з кнопкою 🗑 і свіжу кнопку оформлення
+                showUnavailableModal(blocked);   // модалка зі списком + кнопками «Видалити»
+                haptic('medium');
+                return;                          // НЕ відправляємо замовлення
+            }
             btn.textContent = 'Відправляємо...';
 
             // Генеруємо номер замовлення на сервері
