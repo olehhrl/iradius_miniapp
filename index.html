@@ -1172,6 +1172,7 @@
             const savedData = JSON.parse(localStorage.getItem('ir_order_data') || '{}');
             // Відновлюємо cityRef зі збережених даних
             if (savedData.cityRef) cityRef = savedData.cityRef;
+            if (savedData.warehouseRef) warehouseRef = savedData.warehouseRef;
             if (total < 400) {
                 formWrap.innerHTML = '';
                 return;
@@ -1217,6 +1218,7 @@
 
         // --- NOVA POSHTA AUTOCOMPLETE ---
         let cityRef = null;
+        let warehouseRef = null;
         let cityTimer = null;
         let warehouseTimer = null;
 
@@ -1258,7 +1260,7 @@
                 const results = data.results || [];
                 if (!results.length) { list.style.display = 'none'; return; }
                 list.innerHTML = results.map(r =>
-                    '<div class="autocomplete-item" onclick="selectWarehouse(\'' + r.name.replace(/\'/g, "\\'") + '\')">' + r.name + '</div>'
+                    '<div class="autocomplete-item" onclick="selectWarehouse(\'' + r.ref + '\', \'' + r.name.replace(/\'/g, "\\'") + '\')">' + r.name + '</div>'
                 ).join('');
                 list.style.display = 'block';
             } catch { list.style.display = 'none'; }
@@ -1275,14 +1277,15 @@
                     const results = data.results || [];
                     if (!results.length) { list.style.display = 'none'; return; }
                     list.innerHTML = results.map(r =>
-                        '<div class="autocomplete-item" onclick="selectWarehouse(\'' + r.name.replace(/\'/g, "\\'") + '\')">' + r.name + '</div>'
+                        '<div class="autocomplete-item" onclick="selectWarehouse(\'' + r.ref + '\', \'' + r.name.replace(/\'/g, "\\'") + '\')">' + r.name + '</div>'
                     ).join('');
                     list.style.display = 'block';
                 } catch { list.style.display = 'none'; }
             }, 300);
         }
 
-        function selectWarehouse(name) {
+        function selectWarehouse(ref, name) {
+            warehouseRef = ref;
             document.getElementById('f-np').value = name;
             document.getElementById('np-list').style.display = 'none';
         }
@@ -1346,7 +1349,7 @@
             if (hasError) { showToast('Заповніть всі поля правильно'); return; }
 
             // Зберігаємо дані клієнта
-            localStorage.setItem('ir_order_data', JSON.stringify({ name, surname, phone, city, np, comment, cityRef }));
+            localStorage.setItem('ir_order_data', JSON.stringify({ name, surname, phone, city, np, comment, cityRef, warehouseRef }));
 
             const btn = document.querySelector('.btn-order-submit');
             btn.disabled = true;
@@ -1362,6 +1365,8 @@
             const orderData = {
                 name, surname, phone, city, np, comment,
                 order_num: orderNum,
+                city_ref: cityRef || '',
+                warehouse_ref: warehouseRef || '',
                 items: cart.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty, image: i.image || '' })),
                 total: cart.reduce((s, i) => s + i.price * i.qty, 0)
             };
