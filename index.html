@@ -1117,28 +1117,17 @@
                     } catch { return { item, fresh: null }; }
                 }));
 
-                const removed = [];
                 for (const { item, fresh } of checks) {
                     if (!fresh) continue;
-                    // Якщо знайдений товар має іншу назву — артикул в MODX некоректний, ігноруємо
+                    // Оновлюємо ціну тільки якщо назва збігається (захист від розсинхрону артикулів)
                     const namesMatch = fresh.name && item.name &&
-                        fresh.name.trim().toLowerCase().substring(0, 15) === item.name.trim().toLowerCase().substring(0, 15);
-                    if (fresh.sku && item.name && !namesMatch) continue;
-                    if (fresh.presence !== 'available') {
-                        removed.push(item.name);
-                        cart = cart.filter(i => i.id !== item.id);
-                    } else {
-                        const priceDiff = Math.abs(fresh.price - item.price);
-                        if (fresh.price && priceDiff > 3) {
-                            item.priceChanged = true;
-                            item.price = fresh.price;
-                        }
+                        fresh.name.trim().toLowerCase().substring(0, 20) === item.name.trim().toLowerCase().substring(0, 20);
+                    if (!namesMatch) continue;
+                    const priceDiff = Math.abs(fresh.price - item.price);
+                    if (fresh.price && priceDiff > 3) {
+                        item.priceChanged = true;
+                        item.price = fresh.price;
                     }
-                }
-                if (removed.length) {
-                    saveCart();
-                    updateBadges();
-                    alert('❌ Видалено з кошика (немає в наявності):\n' + removed.join('\n'));
                 }
                 saveCart();
             }
