@@ -1317,18 +1317,32 @@
             }
             if (!city) { document.getElementById('f-city').classList.add('error'); hasError = true; }
             if (!np) { document.getElementById('f-np').classList.add('error'); hasError = true; }
+            // Перевіряємо що місто вибране зі списку (є cityRef)
+            if (city && !cityRef) {
+                document.getElementById('f-city').classList.add('error');
+                showToast('Оберіть місто зі списку');
+                hasError = true;
+            }
             if (hasError) { showToast('Заповніть всі поля правильно'); return; }
 
             // Зберігаємо дані клієнта
-            localStorage.setItem('ir_order_data', JSON.stringify({ name, surname, phone, city, np, comment }));
+            localStorage.setItem('ir_order_data', JSON.stringify({ name, surname, phone, city, np, comment, cityRef }));
 
             const btn = document.querySelector('.btn-order-submit');
             btn.disabled = true;
             btn.textContent = 'Відправляємо...';
 
+            // Генеруємо номер замовлення TG-NNN (скидається кожного місяця)
+            const now = new Date();
+            const monthKey = `tg_counter_${now.getFullYear()}_${now.getMonth()}`;
+            let counter = parseInt(localStorage.getItem(monthKey) || '0') + 1;
+            localStorage.setItem(monthKey, counter);
+            const orderNum = 'TG-' + String(counter).padStart(3, '0');
+
             const orderData = {
                 name, surname, phone, city, np, comment,
-                items: cart.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty })),
+                order_num: orderNum,
+                items: cart.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty, image: i.image || '' })),
                 total: cart.reduce((s, i) => s + i.price * i.qty, 0)
             };
 
