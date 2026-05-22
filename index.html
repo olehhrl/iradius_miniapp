@@ -256,15 +256,6 @@
 
     <!-- PROFILE -->
     <div id="page-profile" style="display:none; padding: 0 0 80px;">
-        <!-- Введення телефону -->
-        <div id="profile-phone-wrap" style="padding:16px 14px;">
-            <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">Введіть номер телефону для перегляду замовлень</div>
-            <div style="display:flex;gap:8px;">
-                <input id="profile-phone-input" class="form-input" placeholder="+380..." style="flex:1;" value="">
-                <button onclick="loadOrders()" style="padding:10px 16px;background:var(--teal);color:white;border:none;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;">Знайти</button>
-            </div>
-        </div>
-
         <!-- Замовлення -->
         <div id="profile-orders-wrap"></div>
 
@@ -857,6 +848,11 @@
             btn.classList.toggle('active', isFav);
         }
 
+        // Читаємо телефон з URL параметра (переданий ботом)
+        const urlPhone = new URLSearchParams(window.location.search).get('phone') || '';
+        if (urlPhone) localStorage.setItem('ir_phone', urlPhone);
+        const userPhone = localStorage.getItem('ir_phone') || '';
+
         function showProfile() {
             showPage('profile');
             setNav('nav-profile');
@@ -865,17 +861,16 @@
             document.getElementById('fav-count-label').textContent = favorites.length ? '(' + favorites.length + ' шт)' : '(порожнє)';
             const cartCount = cart.reduce((s, i) => s + i.qty, 0);
             document.getElementById('cart-count-label').textContent = cartCount ? '(' + cartCount + ' шт)' : '(порожній)';
-            // Підставляємо збережений телефон
-            const savedPhone = localStorage.getItem('ir_phone') || '';
-            document.getElementById('profile-phone-input').value = savedPhone;
-            if (savedPhone) loadOrders();
+            loadOrders();
         }
 
         async function loadOrders() {
-            const phone = document.getElementById('profile-phone-input').value.trim();
-            if (!phone || phone.length < 10) { showToast('Введіть номер телефону'); return; }
-            localStorage.setItem('ir_phone', phone);
+            const phone = userPhone;
             const wrap = document.getElementById('profile-orders-wrap');
+            if (!phone) {
+                wrap.innerHTML = '<div class="state-box"><div class="icon">📱</div><p>Номер телефону не визначено.<br>Перезапустіть бота командою /start</p></div>';
+                return;
+            }
             wrap.innerHTML = '<div class="state-box"><div class="spinner"></div><p>Завантаження...</p></div>';
             try {
                 const res = await fetch(SERVER_URL + '/orders?phone=' + encodeURIComponent(phone), { headers: H });
