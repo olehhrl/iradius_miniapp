@@ -976,16 +976,23 @@
                     const skuStr = String(p.sku || '').trim();
                     let fresh = null;
 
-                    // Крок 1: пошук по артикулу
+                    // Крок 1: пошук по артикулу (сайт — для опису/фото)
                     if (skuStr && skuStr !== '0' && skuStr !== 'undefined') {
                         const res = await fetch(SERVER_URL + '/products/sku/' + encodeURIComponent(skuStr), { headers: H });
                         const data = await res.json();
-                        // М'яке порівняння — нормалізуємо обидва (різна кількість ведучих нулів)
-                        if (data.product && normSku(data.product.sku) === normSku(skuStr)) {
+                        if (data.product) {
                             fresh = data.product;
-                        } else if (data.product && data.product.sku) {
-                            // Повний артикул з сайту може відрізнятись лише нулями — беремо якщо назва схожа
-                            fresh = data.product;
+                            // Якщо сайт каже unavailable — перевіряємо Prom (він актуальніший)
+                            if (fresh.presence !== 'available') {
+                                try {
+                                    const promRes = await fetch(SERVER_URL + '/products/prom-sku/' + encodeURIComponent(skuStr), { headers: H });
+                                    const promData = await promRes.json();
+                                    if (promData.product) {
+                                        // Беремо наявність з Prom, решту даних (фото, опис) з сайту
+                                        fresh = { ...fresh, presence: promData.product.presence };
+                                    }
+                                } catch(e) {}
+                            }
                         }
                     }
 
@@ -1013,12 +1020,6 @@
                     return { p, fresh: null };
                 }
             }));
-
-            // DEBUG — тимчасово: показуємо що прийшло з KeyCRM
-            const debugInfo = results.map(({p, fresh}) =>
-                `SKU="${p.sku}" → ${fresh ? fresh.sku + ' ' + fresh.presence : 'null'}`
-            ).join('\n');
-            alert('DEBUG repeatOrder:\n' + debugInfo);
 
             for (const { p, fresh } of results) {
                 if (!fresh || fresh.presence !== 'available') {
