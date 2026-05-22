@@ -956,7 +956,8 @@
             for (const p of products) {
                 try {
                     // Отримуємо актуальну ціну і наявність з Prom по ID
-                    const res = await fetch(SERVER_URL + '/products/' + p.sku, { headers: H });
+                    // Пробуємо по SKU (артикул сайту)
+                    const res = await fetch(SERVER_URL + '/products/sku/' + p.sku, { headers: H });
                     const data = await res.json();
                     const fresh = data.product;
                     console.log('fresh product:', p.sku, fresh?.price, fresh?.presence);
