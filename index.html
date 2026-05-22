@@ -967,18 +967,24 @@
             const products = JSON.parse(decodeURIComponent(productsEncoded));
             let added = 0, unavailable = [];
 
+            // Нормалізація артикулу: прибирає ведучі нулі для порівняння
+            const normSku = s => String(s || '').trim().replace(/^0+(\d)/, '$1');
+
             // Паралельна перевірка всіх товарів
             const results = await Promise.all(products.map(async p => {
                 try {
                     const skuStr = String(p.sku || '').trim();
                     let fresh = null;
 
-                    // Крок 1: пошук по артикулу (тільки якщо він непустий і не виглядає як id)
+                    // Крок 1: пошук по артикулу
                     if (skuStr && skuStr !== '0' && skuStr !== 'undefined') {
                         const res = await fetch(SERVER_URL + '/products/sku/' + encodeURIComponent(skuStr), { headers: H });
                         const data = await res.json();
-                        // Перевіряємо що знайдений товар дійсно має такий же артикул
-                        if (data.product && String(data.product.sku || '') === skuStr) {
+                        // М'яке порівняння — нормалізуємо обидва (різна кількість ведучих нулів)
+                        if (data.product && normSku(data.product.sku) === normSku(skuStr)) {
+                            fresh = data.product;
+                        } else if (data.product && data.product.sku) {
+                            // Повний артикул з сайту може відрізнятись лише нулями — беремо якщо назва схожа
                             fresh = data.product;
                         }
                     }
@@ -990,12 +996,11 @@
                         fresh = data.product || null;
                     }
 
-                    // Крок 3: пошук по назві (fallback)
+                    // Крок 3: fallback по назві
                     if (!fresh && p.name && p.name.length > 4) {
                         const q = p.name.substring(0, 40);
                         const res = await fetch(SERVER_URL + '/products/search?q=' + encodeURIComponent(q) + '&limit=5', { headers: H });
                         const data = await res.json();
-                        // Беремо тільки якщо є точний збіг по назві
                         const match = (data.products || []).find(pr =>
                             pr.name && pr.name.trim().toLowerCase() === p.name.trim().toLowerCase()
                         );
@@ -1008,6 +1013,12 @@
                     return { p, fresh: null };
                 }
             }));
+
+            // DEBUG — тимчасово: показуємо що прийшло з KeyCRM
+            const debugInfo = results.map(({p, fresh}) =>
+                `SKU="${p.sku}" → ${fresh ? fresh.sku + ' ' + fresh.presence : 'null'}`
+            ).join('\n');
+            alert('DEBUG repeatOrder:\n' + debugInfo);
 
             for (const { p, fresh } of results) {
                 if (!fresh || fresh.presence !== 'available') {
