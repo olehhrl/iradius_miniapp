@@ -959,6 +959,7 @@
                     const res = await fetch(SERVER_URL + '/products/' + p.sku, { headers: H });
                     const data = await res.json();
                     const fresh = data.product;
+                    console.log('fresh product:', p.sku, fresh?.price, fresh?.presence);
 
                     if (!fresh || fresh.presence !== 'available') {
                         unavailable.push(p.name.substring(0, 30) + '...');
@@ -978,10 +979,9 @@
                         });
                     }
                     added++;
-                } catch {
-                    // Якщо помилка — додаємо зі старою ціною
-                    cart.push({ id: String(p.sku), name: p.name, price: p.price, qty: p.quantity, image: '' });
-                    added++;
+                } catch(e) {
+                    console.log('repeatOrder error for', p.sku, e);
+                    unavailable.push(p.name.substring(0, 30));
                 }
             }
 
