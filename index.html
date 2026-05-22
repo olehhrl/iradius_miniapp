@@ -962,90 +962,47 @@
         async function repeatOrder(productsEncoded, orderId) {
             const btn = document.getElementById('repeat-btn-' + orderId);
             btn.disabled = true;
-            btn.textContent = '⏳ Перевіряємо наявність...';
+            btn.textContent = '⏳ Додаємо в кошик...';
 
             const products = JSON.parse(decodeURIComponent(productsEncoded));
-            let added = 0, unavailable = [];
+            let added = 0;
 
-            // Нормалізація артикулу: прибирає ведучі нулі для порівняння
-            const normSku = s => String(s || '').trim().replace(/^0+(\d)/, '$1');
-
-            // Паралельна перевірка всіх товарів
+            // Паралельно отримуємо актуальні дані (фото, ціна) по кожному товару
             const results = await Promise.all(products.map(async p => {
                 try {
                     const skuStr = String(p.sku || '').trim();
                     let fresh = null;
-
-                    // Крок 1: пошук по артикулу (сайт — для опису/фото)
                     if (skuStr && skuStr !== '0' && skuStr !== 'undefined') {
                         const res = await fetch(SERVER_URL + '/products/sku/' + encodeURIComponent(skuStr), { headers: H });
                         const data = await res.json();
-                        if (data.product) {
-                            fresh = data.product;
-                            // Якщо сайт каже unavailable — перевіряємо Prom (він актуальніший)
-                            if (fresh.presence !== 'available') {
-                                try {
-                                    const promRes = await fetch(SERVER_URL + '/products/prom-sku/' + encodeURIComponent(skuStr), { headers: H });
-                                    const promData = await promRes.json();
-                                    if (promData.product) {
-                                        // Беремо наявність з Prom, решту даних (фото, опис) з сайту
-                                        fresh = { ...fresh, presence: promData.product.presence };
-                                    }
-                                } catch(e) {}
-                            }
-                        }
+                        if (data.product) fresh = data.product;
                     }
-
-                    // Крок 2: якщо sku числовий 7+ — пробуємо як Prom ID
-                    if (!fresh && /^\d{7,}$/.test(skuStr)) {
-                        const res = await fetch(SERVER_URL + '/products/' + skuStr, { headers: H });
-                        const data = await res.json();
-                        fresh = data.product || null;
-                    }
-
-                    // Крок 3: fallback по назві
-                    if (!fresh && p.name && p.name.length > 4) {
-                        const q = p.name.substring(0, 40);
-                        const res = await fetch(SERVER_URL + '/products/search?q=' + encodeURIComponent(q) + '&limit=5', { headers: H });
-                        const data = await res.json();
-                        const match = (data.products || []).find(pr =>
-                            pr.name && pr.name.trim().toLowerCase() === p.name.trim().toLowerCase()
-                        );
-                        if (match) fresh = match;
-                    }
-
                     return { p, fresh };
                 } catch(e) {
-                    console.log('repeatOrder error for', p.sku, e);
                     return { p, fresh: null };
                 }
             }));
 
             for (const { p, fresh } of results) {
-                if (!fresh || fresh.presence !== 'available') {
-                    unavailable.push((p.name || 'Товар').substring(0, 30));
-                    continue;
-                }
+                // Додаємо незалежно від наявності — кошик перевірить при відкритті
+                const skuStr = String(p.sku || '').trim();
+                const freshId = String((fresh && fresh.id) || '');
+                const freshSku = String((fresh && fresh.sku) || skuStr);
 
-                const freshSku = String(fresh.sku || p.sku || '');
-                const freshId = String(fresh.id || '');
-
-                // Шукаємо в кошику по sku або id
                 const existing = cart.find(i =>
                     (freshSku && String(i.sku) === freshSku) ||
                     (freshId && String(i.id) === freshId)
                 );
-
                 if (existing) {
                     existing.qty += p.quantity;
                 } else {
                     cart.push({
                         id: freshId || freshSku,
                         sku: freshSku,
-                        name: fresh.name || p.name,
-                        price: fresh.price || p.price,
+                        name: (fresh && fresh.name) || p.name,
+                        price: (fresh && fresh.price) || p.price,
                         qty: p.quantity,
-                        image: fresh.main_image || ''
+                        image: (fresh && fresh.main_image) || ''
                     });
                 }
                 added++;
@@ -1055,15 +1012,8 @@
             updateBadges();
             btn.disabled = false;
             btn.textContent = '🔄 Повторити замовлення';
-
-            if (unavailable.length && added > 0) {
-                showToast(`${added} додано, ${unavailable.length} немає в наявності`);
-            } else if (unavailable.length && added === 0) {
-                showToast('Всі товари відсутні в наявності');
-            } else {
-                showToast('Товари додано в кошик 🛒');
-                hapticSuccess();
-            }
+            showToast(`${added} товарів додано в кошик 🛒`);
+            hapticSuccess();
         }
 
         function clearFavorites() {
