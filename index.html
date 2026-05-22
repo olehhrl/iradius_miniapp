@@ -973,20 +973,35 @@
                     const skuStr = String(p.sku || '').trim();
                     let fresh = null;
 
-                    if (skuStr) {
+                    // Крок 1: пошук по артикулу (тільки якщо він непустий і не виглядає як id)
+                    if (skuStr && skuStr !== '0' && skuStr !== 'undefined') {
                         const res = await fetch(SERVER_URL + '/products/sku/' + encodeURIComponent(skuStr), { headers: H });
+                        const data = await res.json();
+                        // Перевіряємо що знайдений товар дійсно має такий же артикул
+                        if (data.product && String(data.product.sku || '') === skuStr) {
+                            fresh = data.product;
+                        }
+                    }
+
+                    // Крок 2: якщо sku числовий 7+ — пробуємо як Prom ID
+                    if (!fresh && /^\d{7,}$/.test(skuStr)) {
+                        const res = await fetch(SERVER_URL + '/products/' + skuStr, { headers: H });
                         const data = await res.json();
                         fresh = data.product || null;
                     }
-                    // Якщо не знайшли по sku — пробуємо як Prom ID (7+ цифр)
-                    if (!fresh) {
-                        const idStr = String(p.id || '').trim();
-                        if (/^\d{7,}$/.test(idStr)) {
-                            const res = await fetch(SERVER_URL + '/products/' + idStr, { headers: H });
-                            const data = await res.json();
-                            fresh = data.product || null;
-                        }
+
+                    // Крок 3: пошук по назві (fallback)
+                    if (!fresh && p.name && p.name.length > 4) {
+                        const q = p.name.substring(0, 40);
+                        const res = await fetch(SERVER_URL + '/products/search?q=' + encodeURIComponent(q) + '&limit=5', { headers: H });
+                        const data = await res.json();
+                        // Беремо тільки якщо є точний збіг по назві
+                        const match = (data.products || []).find(pr =>
+                            pr.name && pr.name.trim().toLowerCase() === p.name.trim().toLowerCase()
+                        );
+                        if (match) fresh = match;
                     }
+
                     return { p, fresh };
                 } catch(e) {
                     console.log('repeatOrder error for', p.sku, e);
