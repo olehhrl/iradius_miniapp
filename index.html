@@ -1120,6 +1120,10 @@
                 const removed = [];
                 for (const { item, fresh } of checks) {
                     if (!fresh) continue;
+                    // Якщо знайдений товар має іншу назву — артикул в MODX некоректний, ігноруємо
+                    const namesMatch = fresh.name && item.name &&
+                        fresh.name.trim().toLowerCase().substring(0, 15) === item.name.trim().toLowerCase().substring(0, 15);
+                    if (fresh.sku && item.name && !namesMatch) continue;
                     if (fresh.presence !== 'available') {
                         removed.push(item.name);
                         cart = cart.filter(i => i.id !== item.id);
