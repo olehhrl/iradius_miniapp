@@ -911,6 +911,9 @@
             }
         }
 
+        // Зберігаємо дані замовлень глобально щоб не передавати через onclick атрибути
+        const ordersProductsMap = {};
+
         function renderOrders(orders) {
             const wrap = document.getElementById('profile-orders-wrap');
             if (!orders.length) {
@@ -934,12 +937,13 @@
             }
 
             for (const o of orders) {
+                // Зберігаємо продукти в глобальний map — без передачі через HTML атрибут
+                ordersProductsMap[o.id] = o.products || [];
+
                 const status = statusMap[o.payment_status] || o.payment_status || '—';
                 const productsHtml = (o.products || []).map(p =>
                     `<div style="font-size:12px;color:#555;padding:4px 0;border-bottom:1px solid var(--border);">${p.name} × ${p.quantity} — <b>${p.price * p.quantity} грн</b></div>`
                 ).join('');
-                const orderId = o.id;
-                const productsData = encodeURIComponent(JSON.stringify(o.products || []));
                 html += `
                 <div style="background:white;border-radius:14px;border:1.5px solid var(--border);padding:14px;box-shadow:var(--shadow);">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
@@ -952,19 +956,19 @@
                         <div style="font-size:15px;font-weight:800;color:var(--teal);">${o.grand_total} грн</div>
                         ${o.tracking_code ? `<a href="https://track.novaposhta.ua/#${o.tracking_code}" target="_blank" style="font-size:11px;color:var(--teal);text-decoration:none;">📦 ${o.tracking_code}</a>` : ''}
                     </div>
-                    <button id="repeat-btn-${o.id}" onclick="repeatOrder('${productsData}', ${o.id})" style="margin-top:10px;width:100%;padding:10px;background:var(--teal-light);color:var(--teal-dark);border:1.5px solid var(--teal);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">🔄 Повторити замовлення</button>
+                    <button id="repeat-btn-${o.id}" onclick="repeatOrder(${o.id})" style="margin-top:10px;width:100%;padding:10px;background:var(--teal-light);color:var(--teal-dark);border:1.5px solid var(--teal);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">🔄 Повторити замовлення</button>
                 </div>`;
             }
             html += '</div>';
             wrap.innerHTML = html;
         }
 
-        async function repeatOrder(productsEncoded, orderId) {
+        async function repeatOrder(orderId) {
             const btn = document.getElementById('repeat-btn-' + orderId);
             btn.disabled = true;
             btn.textContent = '⏳ Додаємо в кошик...';
 
-            const products = JSON.parse(decodeURIComponent(productsEncoded));
+            const products = ordersProductsMap[orderId] || [];
             let added = 0;
 
             // Паралельно отримуємо актуальні дані (фото, ціна) по кожному товару
