@@ -594,8 +594,8 @@
             let html = '<div class="products-grid">';
             for (const p of products) {
                 const price = p.price ? Math.round(parseFloat(p.price)) : null;
-                const isFav = favorites.some(f => f.id == p.id);
-                const inCart = cart.find(i => i.id == p.id);
+                const isFav = favorites.some(f => String(f.id) === String(p.id));
+                const inCart = cart.find(i => String(i.id) === String(p.id));
                 const presence = p.presence === 'available'
                     ? '<span class="presence-available">✅ В наявності</span>'
                     : '<span class="presence-unavailable">❌ Немає</span>';
@@ -813,10 +813,10 @@
 
         // --- FAVORITES ---
         function toggleFavTile(id, sku) {
-            const idx = favorites.findIndex(f => f.id == id);
+            const idx = favorites.findIndex(f => String(f.id) === String(id));
             const btn = document.getElementById('fav-' + id);
             if (idx === -1) {
-                favorites.push({ id, sku: sku || '' });
+                favorites.push({ id: String(id), sku: sku || '' });
                 if (btn) { btn.textContent = '❤️'; btn.classList.add('active'); }
                 showToast('Додано в обране ❤️');
                 haptic('light');
@@ -825,6 +825,10 @@
                 if (btn) { btn.textContent = '🤍'; btn.classList.remove('active'); }
                 showToast('Видалено з обраного');
                 haptic('light');
+                // Якщо ми в обраному — перерендерюємо список
+                if (document.getElementById('page-favorites').style.display !== 'none') {
+                    showFavorites();
+                }
             }
             localStorage.setItem('ir_favorites', JSON.stringify(favorites));
             updateBadges();
@@ -838,7 +842,7 @@
 
         function updateFavDetailBtn() {
             const btn = document.getElementById('btnFavDetail');
-            const isFav = favorites.some(f => f.id == currentProductId);
+            const isFav = favorites.some(f => String(f.id) === String(currentProductId));
             btn.textContent = isFav ? '❤️' : '♡';
             btn.classList.toggle('active', isFav);
         }
