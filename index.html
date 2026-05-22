@@ -967,43 +967,61 @@
             const products = JSON.parse(decodeURIComponent(productsEncoded));
             let added = 0, unavailable = [];
 
-            for (const p of products) {
+            // Паралельна перевірка всіх товарів
+            const results = await Promise.all(products.map(async p => {
                 try {
-                    // Отримуємо актуальну ціну і наявність з Prom по ID
-                    // Спочатку шукаємо по артикулу сайту
-                    let res = await fetch(SERVER_URL + '/products/sku/' + p.sku, { headers: H });
-                    let data = await res.json();
-                    let fresh = data.product;
-                    // Якщо не знайшло — пробуємо як Prom ID
-                    if (!fresh && /^\d{7,}$/.test(String(p.sku))) {
-                        res = await fetch(SERVER_URL + '/products/' + p.sku, { headers: H });
-                        data = await res.json();
-                        fresh = data.product;
-                    }
-                    console.log('fresh product:', p.sku, fresh?.price, fresh?.presence);
+                    const skuStr = String(p.sku || '').trim();
+                    let fresh = null;
 
-                    if (!fresh || fresh.presence !== 'available') {
-                        unavailable.push(p.name.substring(0, 30) + '...');
-                        continue;
+                    if (skuStr) {
+                        const res = await fetch(SERVER_URL + '/products/sku/' + encodeURIComponent(skuStr), { headers: H });
+                        const data = await res.json();
+                        fresh = data.product || null;
                     }
-
-                    const existing = cart.find(i => String(i.id) === String(p.sku));
-                    if (existing) {
-                        existing.qty += p.quantity;
-                    } else {
-                        cart.push({
-                            id: String(p.sku),
-                            name: fresh.name || p.name,
-                            price: fresh.price || p.price,
-                            qty: p.quantity,
-                            image: fresh.main_image || ''
-                        });
+                    // Якщо не знайшли по sku — пробуємо як Prom ID (7+ цифр)
+                    if (!fresh) {
+                        const idStr = String(p.id || '').trim();
+                        if (/^\d{7,}$/.test(idStr)) {
+                            const res = await fetch(SERVER_URL + '/products/' + idStr, { headers: H });
+                            const data = await res.json();
+                            fresh = data.product || null;
+                        }
                     }
-                    added++;
+                    return { p, fresh };
                 } catch(e) {
                     console.log('repeatOrder error for', p.sku, e);
-                    unavailable.push(p.name.substring(0, 30));
+                    return { p, fresh: null };
                 }
+            }));
+
+            for (const { p, fresh } of results) {
+                if (!fresh || fresh.presence !== 'available') {
+                    unavailable.push((p.name || 'Товар').substring(0, 30));
+                    continue;
+                }
+
+                const freshSku = String(fresh.sku || p.sku || '');
+                const freshId = String(fresh.id || '');
+
+                // Шукаємо в кошику по sku або id
+                const existing = cart.find(i =>
+                    (freshSku && String(i.sku) === freshSku) ||
+                    (freshId && String(i.id) === freshId)
+                );
+
+                if (existing) {
+                    existing.qty += p.quantity;
+                } else {
+                    cart.push({
+                        id: freshId || freshSku,
+                        sku: freshSku,
+                        name: fresh.name || p.name,
+                        price: fresh.price || p.price,
+                        qty: p.quantity,
+                        image: fresh.main_image || ''
+                    });
+                }
+                added++;
             }
 
             saveCart();
@@ -1012,7 +1030,7 @@
             btn.textContent = '🔄 Повторити замовлення';
 
             if (unavailable.length && added > 0) {
-                showToast(`${added} товарів додано, ${unavailable.length} немає в наявності`);
+                showToast(`${added} додано, ${unavailable.length} немає в наявності`);
             } else if (unavailable.length && added === 0) {
                 showToast('Всі товари відсутні в наявності');
             } else {
@@ -1099,29 +1117,38 @@
             showPage('cart');
             document.getElementById('btnBack').style.display = 'block';
             document.getElementById('headerTitle').textContent = '🛒 Кошик';
-            // Оновлюємо ціни і наявність
+
+            // Показуємо спінер поки перевіряємо
             if (cart.length) {
-                const removed = [];
-                for (const item of [...cart]) {
+                document.getElementById('cart-items-wrap').innerHTML =
+                    '<div class="state-box"><div class="spinner"></div><p>Перевіряємо наявність...</p></div>';
+                document.getElementById('order-form-wrap').innerHTML = '';
+
+                // Паралельна перевірка всіх товарів одночасно
+                const checks = await Promise.all([...cart].map(async item => {
                     try {
                         const url = item.sku
-                            ? SERVER_URL + '/products/sku/' + item.sku
+                            ? SERVER_URL + '/products/sku/' + encodeURIComponent(item.sku)
                             : SERVER_URL + '/products/' + item.id;
                         const res = await fetch(url, { headers: H });
                         const data = await res.json();
-                        const fresh = data.product;
-                        if (!fresh) continue;
-                        if (fresh.presence !== 'available') {
-                            removed.push(item.name);
-                            cart = cart.filter(i => i.id !== item.id);
-                        } else {
-                            const priceDiff = Math.abs(fresh.price - item.price);
-                            if (fresh.price && priceDiff > 3) {
-                                item.priceChanged = true;
-                                item.price = fresh.price;
-                            }
+                        return { item, fresh: data.product || null };
+                    } catch { return { item, fresh: null }; }
+                }));
+
+                const removed = [];
+                for (const { item, fresh } of checks) {
+                    if (!fresh) continue;
+                    if (fresh.presence !== 'available') {
+                        removed.push(item.name);
+                        cart = cart.filter(i => i.id !== item.id);
+                    } else {
+                        const priceDiff = Math.abs(fresh.price - item.price);
+                        if (fresh.price && priceDiff > 3) {
+                            item.priceChanged = true;
+                            item.price = fresh.price;
                         }
-                    } catch { /* пропускаємо */ }
+                    }
                 }
                 if (removed.length) {
                     saveCart();
