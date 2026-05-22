@@ -1158,6 +1158,8 @@
 
             // Форма замовлення
             const savedData = JSON.parse(localStorage.getItem('ir_order_data') || '{}');
+            // Відновлюємо cityRef зі збережених даних
+            if (savedData.cityRef) cityRef = savedData.cityRef;
             formWrap.innerHTML = `
                 <div class="order-form">
                     <div class="form-title">📦 Оформлення замовлення</div>
@@ -1168,11 +1170,11 @@
                     <input class="form-input" id="f-phone" placeholder="Телефон +380... *" value="${savedData.phone || ''}" oninput="validatePhone(this)">
                     <div class="form-error" id="e-phone">Невірний формат. Приклад: +380671234567</div>
                     <div class="autocomplete-wrap">
-                        <input class="form-input" id="f-city" placeholder="Місто *" value="${savedData.city || ''}" oninput="searchCity(this.value)" autocomplete="off">
+                        <input class="form-input" id="f-city" placeholder="Місто *" value="${savedData.city || ''}" oninput="searchCity(this.value)" autocomplete="off" readonly onfocus="this.removeAttribute('readonly');searchCity(this.value)">
                         <div class="autocomplete-list" id="city-list" style="display:none"></div>
                     </div>
                     <div class="autocomplete-wrap">
-                        <input class="form-input" id="f-np" placeholder="Відділення Нової Пошти *" value="${savedData.np || ''}" oninput="searchWarehouse(this.value)" autocomplete="off" ${savedData.cityRef ? '' : 'disabled'}>
+                        <input class="form-input" id="f-np" placeholder="Відділення Нової Пошти *" value="${savedData.np || ''}" oninput="searchWarehouse(this.value)" autocomplete="off" ${savedData.cityRef ? '' : 'disabled'} readonly onfocus="this.removeAttribute('readonly');if(cityRef)searchWarehouse(this.value)">
                         <div class="autocomplete-list" id="np-list" style="display:none"></div>
                     </div>
                     <input class="form-input" id="f-comment" placeholder="Коментар до замовлення" value="${savedData.comment || ''}">
