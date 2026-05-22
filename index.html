@@ -255,17 +255,27 @@
     </div>
 
     <!-- PROFILE -->
-    <div id="page-profile" style="display:none; padding: 20px 14px 80px;">
-        <div style="font-size:15px;font-weight:700;color:var(--teal-dark);margin-bottom:16px;">⚙️ Кабінет</div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
+    <div id="page-profile" style="display:none; padding: 0 0 80px;">
+        <!-- Введення телефону -->
+        <div id="profile-phone-wrap" style="padding:16px 14px;">
+            <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">Введіть номер телефону для перегляду замовлень</div>
+            <div style="display:flex;gap:8px;">
+                <input id="profile-phone-input" class="form-input" placeholder="+380..." style="flex:1;" value="">
+                <button onclick="loadOrders()" style="padding:10px 16px;background:var(--teal);color:white;border:none;border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;">Знайти</button>
+            </div>
+        </div>
+
+        <!-- Замовлення -->
+        <div id="profile-orders-wrap"></div>
+
+        <!-- Керування -->
+        <div style="padding:16px 14px;border-top:1px solid var(--border);margin-top:8px;display:flex;flex-direction:column;gap:10px;">
+            <div style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Керування</div>
             <button onclick="clearFavorites()" style="padding:14px;background:white;border:1.5px solid var(--border);border-radius:12px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;text-align:left;">
                 🗑 Очистити обране <span style="color:var(--text-muted);font-weight:400;" id="fav-count-label"></span>
             </button>
             <button onclick="clearCart()" style="padding:14px;background:white;border:1.5px solid var(--border);border-radius:12px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;text-align:left;">
                 🗑 Очистити кошик <span style="color:var(--text-muted);font-weight:400;" id="cart-count-label"></span>
-            </button>
-            <button onclick="clearAll()" style="padding:14px;background:#fdecea;border:1.5px solid var(--red);border-radius:12px;font-size:14px;font-weight:600;color:var(--red);cursor:pointer;text-align:left;">
-                🔄 Скинути все (обране + кошик)
             </button>
         </div>
     </div>
@@ -855,6 +865,87 @@
             document.getElementById('fav-count-label').textContent = favorites.length ? '(' + favorites.length + ' шт)' : '(порожнє)';
             const cartCount = cart.reduce((s, i) => s + i.qty, 0);
             document.getElementById('cart-count-label').textContent = cartCount ? '(' + cartCount + ' шт)' : '(порожній)';
+            // Підставляємо збережений телефон
+            const savedPhone = localStorage.getItem('ir_phone') || '';
+            document.getElementById('profile-phone-input').value = savedPhone;
+            if (savedPhone) loadOrders();
+        }
+
+        async function loadOrders() {
+            const phone = document.getElementById('profile-phone-input').value.trim();
+            if (!phone || phone.length < 10) { showToast('Введіть номер телефону'); return; }
+            localStorage.setItem('ir_phone', phone);
+            const wrap = document.getElementById('profile-orders-wrap');
+            wrap.innerHTML = '<div class="state-box"><div class="spinner"></div><p>Завантаження...</p></div>';
+            try {
+                const res = await fetch(SERVER_URL + '/orders?phone=' + encodeURIComponent(phone), { headers: H });
+                const data = await res.json();
+                renderOrders(data.orders || []);
+            } catch {
+                wrap.innerHTML = '<div class="state-box"><div class="icon">⚠️</div><p>Помилка завантаження</p></div>';
+            }
+        }
+
+        function renderOrders(orders) {
+            const wrap = document.getElementById('profile-orders-wrap');
+            if (!orders.length) {
+                wrap.innerHTML = '<div class="state-box"><div class="icon">📋</div><p>Замовлень не знайдено</p></div>';
+                return;
+            }
+            const statusMap = {
+                'not_paid': '⏳ Не оплачено',
+                'paid': '✅ Оплачено',
+                'partially_paid': '🔶 Частково оплачено',
+            };
+            let html = '<div style="padding:0 14px;display:flex;flex-direction:column;gap:10px;">';
+            for (const o of orders) {
+                const status = statusMap[o.payment_status] || o.payment_status || '—';
+                const tracking = o.tracking_code
+                    ? `<a href="https://track.novaposhta.ua/#${o.tracking_code}" target="_blank" style="color:var(--teal);font-weight:600;text-decoration:none;">📦 ${o.tracking_code}</a>`
+                    : '<span style="color:var(--text-muted)">Трекінг відсутній</span>';
+                const productsHtml = (o.products || []).map(p =>
+                    `<div style="font-size:12px;color:#555;padding:3px 0;border-bottom:1px solid var(--border);">${p.name} × ${p.quantity} — <b>${p.price * p.quantity} грн</b></div>`
+                ).join('');
+                // Кнопка повторити замовлення
+                const itemsJson = JSON.stringify(o.products || []).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                html += `
+                <div style="background:white;border-radius:14px;border:1.5px solid var(--border);padding:14px;box-shadow:var(--shadow);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                        <div style="font-size:13px;font-weight:700;">Замовлення #${o.id}</div>
+                        <div style="font-size:11px;color:var(--text-muted);">${o.created_at}</div>
+                    </div>
+                    <div style="font-size:12px;margin-bottom:6px;">${status}</div>
+                    <div style="margin-bottom:8px;">${productsHtml}</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+                        <div style="font-size:14px;font-weight:800;color:var(--teal);">${o.grand_total} грн</div>
+                        ${tracking}
+                    </div>
+                    <button onclick='repeatOrder(${JSON.stringify(o.products)})' style="margin-top:10px;width:100%;padding:10px;background:var(--teal-light);color:var(--teal-dark);border:1.5px solid var(--teal);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">🔄 Повторити замовлення</button>
+                </div>`;
+            }
+            html += '</div>';
+            wrap.innerHTML = html;
+        }
+
+        function repeatOrder(products) {
+            for (const p of products) {
+                const existing = cart.find(i => String(i.id) === String(p.sku));
+                if (existing) {
+                    existing.qty += p.quantity;
+                } else {
+                    cart.push({
+                        id: p.sku,
+                        name: p.name,
+                        price: p.price,
+                        qty: p.quantity,
+                        image: ''
+                    });
+                }
+            }
+            saveCart();
+            updateBadges();
+            showToast('Товари додано в кошик 🛒');
+            hapticSuccess();
         }
 
         function clearFavorites() {
