@@ -901,12 +901,17 @@
             if (!favorites.length) { container.innerHTML = '<div class="state-box"><div class="icon">♡</div><p>Ви ще нічого не додали в обране</p></div>'; return; }
             container.innerHTML = '<div class="state-box"><div class="spinner"></div></div>';
             const products = await Promise.all(favorites.map(fav => {
-                // Якщо є sku — завантажуємо через базу сайту (для товарів з пошуку)
-                // Якщо немає — завантажуємо з Prom по числовому id
                 const url = fav.sku
                     ? SERVER_URL + '/products/sku/' + fav.sku
                     : SERVER_URL + '/products/' + fav.id;
-                return fetch(url, { headers: H }).then(r => r.json()).then(d => d.product).catch(() => null);
+                return fetch(url, { headers: H }).then(r => r.json()).then(d => {
+                    // Гарантуємо що id і sku в продукті відповідають тому що в favorites
+                    if (d.product) {
+                        d.product.id = String(fav.id);
+                        d.product.sku = fav.sku || d.product.sku || '';
+                    }
+                    return d.product;
+                }).catch(() => null);
             }));
             await renderProducts(products.filter(Boolean), 'favorites-container');
         }
