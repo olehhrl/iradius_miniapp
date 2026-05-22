@@ -91,7 +91,7 @@
         /* DETAIL */
         #page-detail { display: none; padding-bottom: 200px; }
         .detail-img-wrap { background: var(--white); padding: 20px; text-align: center; border-bottom: 1px solid var(--border); min-height: 200px; display: flex; align-items: center; justify-content: center; }
-        .detail-img { max-width: 100%; max-height: 240px; object-fit: contain; border-radius: 0; }
+        .detail-img { max-width: 100%; max-height: 240px; object-fit: contain; border-radius: 12px; }
         .detail-img-placeholder { font-size: 80px; }
         .detail-body { padding: 16px; }
         .detail-name { font-size: 17px; font-weight: 700; color: var(--text); line-height: 1.4; }
@@ -254,27 +254,11 @@
         <div id="order-form-wrap"></div>
     </div>
 
-    <!-- PROFILE -->
-    <div id="page-profile" style="display:none; padding: 20px 14px 80px;">
-        <div style="font-size:15px;font-weight:700;color:var(--teal-dark);margin-bottom:16px;">⚙️ Кабінет</div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-            <button onclick="clearFavorites()" style="padding:14px;background:white;border:1.5px solid var(--border);border-radius:12px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;text-align:left;">
-                🗑 Очистити обране <span style="color:var(--text-muted);font-weight:400;" id="fav-count-label"></span>
-            </button>
-            <button onclick="clearCart()" style="padding:14px;background:white;border:1.5px solid var(--border);border-radius:12px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;text-align:left;">
-                🗑 Очистити кошик <span style="color:var(--text-muted);font-weight:400;" id="cart-count-label"></span>
-            </button>
-            <button onclick="clearAll()" style="padding:14px;background:#fdecea;border:1.5px solid var(--red);border-radius:12px;font-size:14px;font-weight:600;color:var(--red);cursor:pointer;text-align:left;">
-                🔄 Скинути все (обране + кошик)
-            </button>
-        </div>
-    </div>
-
     <div class="bottom-nav">
         <div class="nav-item active" id="nav-catalog" onclick="goHome()"><span class="nav-icon">🏠</span>Каталог</div>
         <div class="nav-item" id="nav-fav" onclick="showFavorites()"><span class="nav-icon">♡</span>Обране<span class="nav-badge" id="badge-fav"></span></div>
         <div class="nav-item" id="nav-cart" onclick="showCart()"><span class="nav-icon">🛒</span>Кошик<span class="nav-badge" id="badge-cart"></span></div>
-        <div class="nav-item" id="nav-profile" onclick="showProfile()"><span class="nav-icon">👤</span>Кабінет</div>
+        <div class="nav-item" id="nav-profile"><span class="nav-icon">👤</span>Кабінет</div>
     </div>
 
 
@@ -343,7 +327,7 @@
         }
 
         // --- PAGES ---
-        const pages = ['page-main','page-products','page-detail','page-favorites','page-cart','page-profile'];
+        const pages = ['page-main','page-products','page-detail','page-favorites','page-cart'];
         function showPage(name) {
             pages.forEach(id => document.getElementById(id).style.display = 'none');
             document.getElementById('page-' + name).style.display = 'block';
@@ -843,43 +827,7 @@
             btn.classList.toggle('active', isFav);
         }
 
-        function showProfile() {
-            showPage('profile');
-            setNav('nav-profile');
-            document.getElementById('btnBack').style.display = 'block';
-            document.getElementById('headerTitle').textContent = '👤 Кабінет';
-            document.getElementById('fav-count-label').textContent = favorites.length ? '(' + favorites.length + ' шт)' : '(порожнє)';
-            const cartCount = cart.reduce((s, i) => s + i.qty, 0);
-            document.getElementById('cart-count-label').textContent = cartCount ? '(' + cartCount + ' шт)' : '(порожній)';
-        }
-
-        function clearFavorites() {
-            if (!favorites.length) { showToast('Обране вже порожнє'); return; }
-            favorites = [];
-            localStorage.setItem('ir_favorites', JSON.stringify(favorites));
-            updateBadges();
-            showToast('Обране очищено');
-            showProfile();
-        }
-
-        function clearCart() {
-            if (!cart.length) { showToast('Кошик вже порожній'); return; }
-            cart = [];
-            localStorage.setItem('ir_cart', JSON.stringify(cart));
-            updateBadges();
-            showToast('Кошик очищено');
-            showProfile();
-        }
-
-        function clearAll() {
-            favorites = [];
-            cart = [];
-            localStorage.setItem('ir_favorites', JSON.stringify(favorites));
-            localStorage.setItem('ir_cart', JSON.stringify(cart));
-            updateBadges();
-            showToast('Все скинуто ✓');
-            showProfile();
-        }
+        function addToCart() {
             if (!currentProductData) return;
             const p = currentProductData;
             const img = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
@@ -1026,17 +974,17 @@
         }
 
         function changeQty(id, delta) {
-            const item = cart.find(i => i.id == id);
+            const item = cart.find(i => i.id === id);
             if (!item) return;
             item.qty += delta;
-            if (item.qty <= 0) { cart = cart.filter(i => i.id != id); }
+            if (item.qty <= 0) { cart = cart.filter(i => i.id !== id); }
             saveCart();
             updateBadges();
             renderCart();
         }
 
         function removeFromCart(id) {
-            cart = cart.filter(i => i.id != id);
+            cart = cart.filter(i => i.id !== id);
             saveCart();
             updateBadges();
             renderCart();
