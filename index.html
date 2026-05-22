@@ -1114,10 +1114,12 @@
                         if (fresh.presence !== 'available') {
                             removed.push(item.name);
                             cart = cart.filter(i => i.id !== item.id);
-                        const priceDiff = Math.abs(fresh.price - item.price);
-                        if (fresh.price && priceDiff > 3) {
-                            item.priceChanged = true;
-                            item.price = fresh.price;
+                        } else {
+                            const priceDiff = Math.abs(fresh.price - item.price);
+                            if (fresh.price && priceDiff > 3) {
+                                item.priceChanged = true;
+                                item.price = fresh.price;
+                            }
                         }
                     } catch { /* пропускаємо */ }
                 }
