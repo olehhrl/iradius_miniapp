@@ -594,8 +594,8 @@
             let html = '<div class="products-grid">';
             for (const p of products) {
                 const price = p.price ? Math.round(parseFloat(p.price)) : null;
-                const isFav = favorites.some(f => f.id === p.id);
-                const inCart = cart.find(i => i.id === p.id);
+                const isFav = favorites.some(f => f.id == p.id);
+                const inCart = cart.find(i => i.id == p.id);
                 const presence = p.presence === 'available'
                     ? '<span class="presence-available">✅ В наявності</span>'
                     : '<span class="presence-unavailable">❌ Немає</span>';
@@ -813,7 +813,7 @@
 
         // --- FAVORITES ---
         function toggleFavTile(id, sku) {
-            const idx = favorites.findIndex(f => f.id === id);
+            const idx = favorites.findIndex(f => f.id == id);
             const btn = document.getElementById('fav-' + id);
             if (idx === -1) {
                 favorites.push({ id, sku: sku || '' });
@@ -838,7 +838,7 @@
 
         function updateFavDetailBtn() {
             const btn = document.getElementById('btnFavDetail');
-            const isFav = favorites.some(f => f.id === currentProductId);
+            const isFav = favorites.some(f => f.id == currentProductId);
             btn.textContent = isFav ? '❤️' : '♡';
             btn.classList.toggle('active', isFav);
         }
