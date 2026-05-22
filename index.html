@@ -1138,6 +1138,12 @@
                 html += '</div></div>';
             }
             html += '</div>';
+            const MIN_ORDER = 400;
+            if (total < MIN_ORDER) {
+                html += `<div style="margin:10px 14px;padding:12px 14px;background:#fff8e1;border:1.5px solid #ffc107;border-radius:12px;font-size:13px;color:#795548;">
+                    ⚠️ Мінімальна сума замовлення — <b>${MIN_ORDER} грн</b>. Додайте ще товарів на <b>${MIN_ORDER - total} грн</b>.
+                </div>`;
+            }
             html += '<div class="cart-total"><span class="cart-total-label">Разом:</span><span class="cart-total-price">' + total + ' грн</span></div>';
             wrap.innerHTML = html;
 
@@ -1160,6 +1166,10 @@
             const savedData = JSON.parse(localStorage.getItem('ir_order_data') || '{}');
             // Відновлюємо cityRef зі збережених даних
             if (savedData.cityRef) cityRef = savedData.cityRef;
+            if (total < 400) {
+                formWrap.innerHTML = '';
+                return;
+            }
             formWrap.innerHTML = `
                 <div class="order-form">
                     <div class="form-title">📦 Оформлення замовлення</div>
@@ -1293,6 +1303,8 @@
 
         // --- SUBMIT ORDER ---
         async function submitOrder() {
+            const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+            if (total < 400) { showToast('Мінімальне замовлення 400 грн'); return; }
             const name = document.getElementById('f-name').value.trim();
             const surname = document.getElementById('f-surname').value.trim();
             const phone = document.getElementById('f-phone').value.trim().replace(/\s/g, '');
