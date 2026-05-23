@@ -837,6 +837,18 @@
 
         // --- RENDER TILES ---
         let inFavoritesView = false;   // у вікні «Обране» сердечка завжди залиті/червоні
+        // Фолбек фото: пряме впало → проксі сервера → плейсхолдер 🦷
+        function imgFallback(img) {
+            const raw = img.getAttribute('data-raw') || '';
+            const pid = img.getAttribute('data-pid') || '';
+            if (img.getAttribute('data-fb') === '1' || !raw) {
+                img.outerHTML = '<div class="tile-img-placeholder" id="img-' + pid + '">🦷</div>';
+                return;
+            }
+            img.setAttribute('data-fb', '1');
+            img.src = SERVER_URL + '/image?url=' + encodeURIComponent(raw);
+        }
+
         function buildTileHTML(p) {
             const price = p.price ? Math.round(parseFloat(p.price)) : null;
             const isFav = inFavoritesView || favorites.some(f => String(f.id) === String(p.id));
@@ -850,10 +862,12 @@
             let html = '<div class="product-tile' + (p.presence !== 'available' ? ' unavailable' : '') + '" onclick="openDetail(' + p.id + ', \'' + (p.sku || '') + '\'  )">';
             html += '<div class="tile-img-wrap">';
             if (rawImg2) {
-                // Фото вшите прямо в HTML через проксі сервера — браузер вантажить сам,
-                // без окремого JS-кроку (який раніше міг мовчки падати). onerror → 🦷
-                const proxied = SERVER_URL + '/image?url=' + encodeURIComponent(rawImg2);
-                html += '<img class="tile-img" id="img-' + p.id + '" src="' + proxied + '" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;tile-img-placeholder&quot; id=&quot;img-' + p.id + '&quot;>🦷</div>\'">';
+                // iradius.com.ua — напряму (швидко); інше (prom) — через проксі.
+                const direct = rawImg2.startsWith('https://iradius.com.ua');
+                const src = direct ? rawImg2 : (SERVER_URL + '/image?url=' + encodeURIComponent(rawImg2));
+                html += '<img class="tile-img" id="img-' + p.id + '" src="' + src + '" loading="lazy" ' +
+                        'data-raw="' + rawImg2.replace(/"/g, '&quot;') + '" data-pid="' + p.id + '" ' +
+                        'onerror="imgFallback(this)">';
             } else {
                 html += '<div class="tile-img-placeholder" id="img-' + p.id + '">🦷</div>';
             }
@@ -1320,7 +1334,8 @@
         // тому використовуємо чистий шлях track.novaposhta.ua.
         function openNpTracking(ttn) {
             const clean = String(ttn || '').replace(/\D/g, '');   // тільки цифри ТТН
-            const url = 'https://tracking.novaposhta.ua/#/uk/tracking/' + clean;
+            // Параметр cargo_number автоматично підставляє ТТН у поле пошуку
+            const url = 'https://tracking.novaposhta.ua/#/uk/tracking?cargo_number=' + clean;
             try {
                 if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink) {
                     Telegram.WebApp.openLink(url);
