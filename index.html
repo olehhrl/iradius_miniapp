@@ -88,6 +88,7 @@
         .tile-qty-input::-webkit-outer-spin-button, .tile-qty-input::-webkit-inner-spin-button { -webkit-appearance: none; }
 
         .tile-add { width: 28px; height: 28px; background: var(--teal); color: white; border: none; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; flex-shrink: 0; }
+        .tile-bell { background: #f0a020; font-size: 14px; }
 
         /* DETAIL */
         #page-detail { display: none; padding-bottom: 200px; }
@@ -862,22 +863,43 @@
             } else if (isAvailable) {
                 html += '<button class="tile-add" id="add-' + p.id + '" onclick="event.stopPropagation();tileChangeQty(' + p.id + ', 1, \'' + nameEsc + '\', ' + (price||0) + ', \'' + imgEsc + '\', \'' + (p.sku||'') + '\')">+</button>';
             } else {
-                html += '<button class="tile-add" disabled style="background:#ccc;cursor:default;">—</button>';
+                html += '<button class="tile-add tile-bell" onclick="event.stopPropagation();requestRestockTile(' + p.id + ', \'' + (p.sku||'') + '\', \'' + nameEsc + '\', this)" title="Повідомити про наявність">🔔</button>';
             }
             html += '</div></div></div>';
             return html;
+        }
+
+        // Дзвіночок прямо з плитки каталогу (не відкриваючи картку)
+        async function requestRestockTile(id, sku, name, btn) {
+            btn.disabled = true; btn.textContent = '…';
+            try {
+                const res = await fetch(SERVER_URL + '/restock', {
+                    method: 'POST',
+                    headers: { ...H, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ product_id: id, sku: sku || '', name: name || '', phone: userPhone || '' })
+                });
+                const d = await res.json();
+                if (d.ok) { btn.textContent = '✅'; showToast('Повідомимо, коли товар зʼявиться 🔔'); hapticSuccess(); }
+                else { btn.disabled = false; btn.textContent = '🔔'; showToast(d.error || 'Не вдалося'); }
+            } catch {
+                btn.disabled = false; btn.textContent = '🔔'; showToast('Помилка зʼєднання');
+            }
         }
 
         async function loadTileImage(p) {
             const rawImg = p.main_image || p.image || (p.images && p.images[0] && p.images[0].url) || '';
             if (!rawImg) return;
             const el = document.getElementById('img-' + p.id);
-            if (!el) return;
+            if (!el || el.tagName === 'IMG') return;
+            // Фото з сайту (iradius.com.ua) — напряму; інше (prom) — через проксі
             if (rawImg.startsWith('https://iradius.com.ua')) {
-                el.outerHTML = '<img class="tile-img" id="img-' + p.id + '" src="' + rawImg + '">';
+                el.outerHTML = '<img class="tile-img" id="img-' + p.id + '" src="' + rawImg + '" onerror="this.outerHTML=\'<div class=&quot;tile-img-placeholder&quot; id=&quot;img-' + p.id + '&quot;>🦷</div>\'">';
             } else {
                 const blobUrl = await loadImageBlob(rawImg);
-                if (blobUrl) el.outerHTML = '<img class="tile-img" id="img-' + p.id + '" src="' + blobUrl + '">';
+                if (blobUrl) {
+                    const el2 = document.getElementById('img-' + p.id);
+                    if (el2 && el2.tagName !== 'IMG') el2.outerHTML = '<img class="tile-img" id="img-' + p.id + '" src="' + blobUrl + '">';
+                }
             }
         }
 
@@ -893,7 +915,8 @@
             if (!grid) return;
 
             grid.insertAdjacentHTML('beforeend', products.map(buildTileHTML).join(''));
-            for (const p of products) { await loadTileImage(p); }
+            // Фото вантажимо ПАРАЛЕЛЬНО (не блокуючим ланцюгом) — швидше і без гонок
+            products.forEach(p => { loadTileImage(p); });
         }
 
 
@@ -1230,7 +1253,7 @@
                     <div style="font-size:13px;font-weight:700;margin-bottom:8px;">📦 Остання посилка</div>
                     <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">ТТН: ${ttn}</div>
                     <div id="track-result"><div class="spinner" style="margin:6px auto;"></div></div>
-                    <a href="https://track.novaposhta.ua/#${ttn}" target="_blank" style="display:block;margin-top:8px;font-size:11px;color:var(--teal);text-decoration:none;text-align:center;">Відкрити на сайті Нової Пошти →</a>
+                    <a href="#" onclick="openNpTracking('${ttn}');return false;" style="display:block;margin-top:8px;font-size:11px;color:var(--teal);text-decoration:none;text-align:center;">Відкрити на сайті Нової Пошти →</a>
                 </div>`;
             }
 
@@ -1253,7 +1276,7 @@
                     <div style="margin-bottom:10px;">${productsHtml}</div>
                     <div style="display:flex;justify-content:space-between;align-items:center;">
                         <div style="font-size:15px;font-weight:800;color:var(--teal);">${o.grand_total} грн</div>
-                        ${o.tracking_code ? `<a href="https://track.novaposhta.ua/#${o.tracking_code}" target="_blank" style="font-size:11px;color:var(--teal);text-decoration:none;">📦 ${o.tracking_code}</a>` : ''}
+                        ${o.tracking_code ? `<a href="#" onclick="openNpTracking('${o.tracking_code}');return false;" style="font-size:11px;color:var(--teal);text-decoration:none;">📦 ${o.tracking_code}</a>` : ''}
                     </div>
                     <button id="repeat-btn-${o.id}" onclick="repeatOrder(${o.id})" style="margin-top:10px;width:100%;padding:10px;background:var(--teal-light);color:var(--teal-dark);border:1.5px solid var(--teal);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">🔄 Повторити замовлення</button>
                 </div>`;
@@ -1264,6 +1287,18 @@
             // Підтягуємо статус останньої посилки
             const lastTtn = orders.find(o => o.tracking_code);
             if (lastTtn) trackParcel(lastTtn.tracking_code);
+        }
+
+        // Відкриває трекінг НП правильно: у Telegram через openLink (WebView інакше каже "немає зв'язку")
+        function openNpTracking(ttn) {
+            const url = 'https://tracking.novaposhta.ua/#/uk/tracking/?cargoNumber=' + encodeURIComponent(ttn);
+            try {
+                if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink) {
+                    Telegram.WebApp.openLink(url);
+                    return;
+                }
+            } catch (e) {}
+            window.open(url, '_blank');
         }
 
         async function trackParcel(ttn) {
