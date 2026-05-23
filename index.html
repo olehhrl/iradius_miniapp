@@ -263,15 +263,16 @@
 
     <!-- PROFILE -->
     <div id="page-profile" style="display:none; padding: 0 0 80px;">
+        <!-- Дії кабінету (окремо, над замовленнями) -->
+        <div style="padding:14px 14px 4px;">
+            <button onclick="openFeedback()" style="width:100%;padding:13px;background:var(--teal);border:none;border-radius:12px;font-size:14px;font-weight:700;color:white;cursor:pointer;box-shadow:var(--shadow);">
+                💡 Запропонувати покращення / повідомити про помилку
+            </button>
+        </div>
+        <div class="section-title" style="padding:10px 14px 0;">🧾 Мої замовлення</div>
         <!-- Замовлення -->
         <div id="tab-orders" style="display:block;">
             <div id="profile-orders-wrap"></div>
-        </div>
-        <!-- Фідбек -->
-        <div style="padding:16px 14px;">
-            <button onclick="openFeedback()" style="width:100%;padding:13px;background:white;border:1.5px solid var(--teal);border-radius:12px;font-size:14px;font-weight:600;color:var(--teal-dark);cursor:pointer;">
-                💡 Запропонувати покращення / повідомити про помилку
-            </button>
         </div>
     </div>
 
@@ -396,6 +397,7 @@
         let currentProductData = null;
         let allGroups = [];
         let groupStack = [];
+        let detailReturnPage = 'main';   // куди повертатись із картки товару
 
         // Persistent storage
         let favorites = JSON.parse(localStorage.getItem('ir_favorites') || '[]');
@@ -453,14 +455,23 @@
 
         function goBack() {
             if (document.getElementById('page-detail').style.display !== 'none') {
-                if (isSearchMode) {
+                // Повертаємось рівно туди, звідки відкрили картку (контент уже в DOM)
+                const rp = detailReturnPage || 'main';
+                if (rp === 'favorites') {
+                    showPage('favorites'); setNav('nav-fav');
+                    document.getElementById('headerTitle').textContent = '❤️ Обране';
+                } else if (rp === 'cart') {
+                    showPage('cart'); setNav('nav-cart');
+                    document.getElementById('headerTitle').textContent = '🛒 Кошик';
+                } else if (rp === 'products') {
                     showPage('products');
-                } else if (currentGroupId) {
-                    showPage('products');
+                    document.getElementById('headerTitle').textContent = lastSearchQuery || (groupStack.length > 0 ? groupStack[groupStack.length-1].name : '🦷 IRadius Dental Shop');
                 } else {
-                    goHome();
+                    // main — категорія з підкатегоріями + кореневі товари, або головна
+                    showPage('main');
+                    document.getElementById('headerTitle').textContent = groupStack.length > 0 ? groupStack[groupStack.length-1].name : '🦷 IRadius Dental Shop';
+                    document.getElementById('btnBack').style.display = groupStack.length > 0 ? 'block' : 'none';
                 }
-                document.getElementById('headerTitle').textContent = lastSearchQuery || (groupStack.length > 0 ? groupStack[groupStack.length-1].name : '🦷 IRadius Dental Shop');
             } else if (document.getElementById('page-products').style.display !== 'none') {
                 if (groupStack.length > 0) {
                     groupStack.pop();
@@ -837,7 +848,7 @@
             if (p.sku) html += '<div class="tile-sku">Арт: ' + p.sku + '</div>';
             html += '<div class="tile-presence-row" style="display:flex;align-items:center;justify-content:space-between;margin-top:3px">';
             html += '<div class="tile-presence">' + presence + '</div>';
-            html += '<button class="tile-btn tile-fav ' + (isFav ? 'active' : '') + '" id="fav-' + p.id + '" onclick="event.stopPropagation();toggleFavTile(' + p.id + ', \'' + (p.sku || '') + '\', \'' + nameEsc + '\', \'' + imgEsc + '\')">' + heartSVG(isFav) + '</button>';
+            html += '<button class="tile-btn tile-fav ' + (isFav ? 'active' : '') + '" id="fav-' + p.id + '" onclick="event.stopPropagation();toggleFavTile(' + p.id + ', \'' + (p.sku || '') + '\', \'' + nameEsc + '\', \'' + imgEsc + '\', ' + (price||0) + ', \'' + (p.presence||'available') + '\')">' + heartSVG(isFav) + '</button>';
             html += '</div>';
             html += '<div class="tile-bottom">';
             html += '<div class="tile-price">' + (price ? price + ' <span>грн</span>' : '—') + '</div>';
@@ -1046,6 +1057,9 @@
         // --- DETAIL ---
         async function openDetail(id, sku) {
             currentProductId = id;
+            // Запам'ятовуємо, з якої сторінки відкрили картку — щоб коректно повернутись
+            const visible = pages.find(pg => document.getElementById(pg).style.display !== 'none');
+            detailReturnPage = visible ? visible.replace('page-', '') : 'main';
             // Трекінг перегляду для сортування «Популярні» (не блокує відкриття картки)
             if (id) {
                 fetch(SERVER_URL + '/track/view/' + encodeURIComponent(id), { method: 'POST', headers: H }).catch(() => {});
@@ -1115,11 +1129,16 @@
         }
 
         // --- FAVORITES ---
-        function toggleFavTile(id, sku, name, image) {
+        function toggleFavTile(id, sku, name, image, price, presence) {
             const idx = favorites.findIndex(f => String(f.id) === String(id));
             const btn = document.getElementById('fav-' + id);
             if (idx === -1) {
-                favorites.push({ id: String(id), sku: sku || '', name: name || '', image: image || '' });
+                // Зберігаємо повний снапшот — фото гарантовано буде в обраному
+                favorites.push({
+                    id: String(id), sku: sku || '', name: name || '',
+                    image: image || '', price: (price != null ? price : null),
+                    presence: presence || 'available'
+                });
                 if (btn) { btn.innerHTML = heartSVG(true); btn.classList.add('active'); }
                 showToast('Додано в обране');
                 haptic('light');
@@ -1128,7 +1147,6 @@
                 if (btn) { btn.innerHTML = heartSVG(false); btn.classList.remove('active'); }
                 showToast('Видалено з обраного');
                 haptic('light');
-                // Якщо ми в обраному — перерендерюємо список
                 if (document.getElementById('page-favorites').style.display !== 'none') {
                     showFavorites();
                 }
@@ -1138,10 +1156,9 @@
         }
 
         function toggleFavorite() {
-            const sku = currentProductData ? (currentProductData.sku || '') : '';
-            const nm = currentProductData ? (currentProductData.name || '') : '';
-            const img = currentProductData ? (currentProductData.main_image || currentProductData.image || '') : '';
-            toggleFavTile(currentProductId, sku, nm, img);
+            const p = currentProductData || {};
+            const img = p.main_image || (p.images && p.images[0] && p.images[0].url) || p.image || '';
+            toggleFavTile(currentProductId, p.sku || '', p.name || '', img, p.price != null ? Math.round(parseFloat(p.price)) : null, p.presence || 'available');
             updateFavDetailBtn();
         }
 
@@ -1452,46 +1469,57 @@
             document.getElementById('headerTitle').textContent = '❤️ Обране';
             const container = document.getElementById('favorites-container');
             if (!favorites.length) { container.innerHTML = '<div class="state-box"><div class="icon">♡</div><p>Ви ще нічого не додали в обране</p></div>'; return; }
-            container.innerHTML = '<div class="state-box"><div class="spinner"></div></div>';
-            const products = await Promise.all(favorites.map(async fav => {
-                const url = fav.sku
-                    ? SERVER_URL + '/products/sku/' + fav.sku
-                    : SERVER_URL + '/products/' + fav.id;
-                return fetch(url, { headers: H }).then(r => r.json()).then(d => {
-                    if (d.product) {
-                        d.product.id = String(fav.id);
-                        d.product.sku = fav.sku || d.product.sku || '';
-                        // Запасне фото/назва зі збереженого обраного
-                        if (!d.product.main_image && !d.product.image && fav.image) d.product.main_image = fav.image;
-                        if (!d.product.name && fav.name) d.product.name = fav.name;
-                        return d.product;
-                    }
-                    if (fav.name || fav.image) {
-                        return { id: String(fav.id), sku: fav.sku || '', name: fav.name || '—', main_image: fav.image || '', presence: 'available', price: null };
-                    }
-                    return null;
-                }).catch(() => {
-                    return (fav.name || fav.image) ? { id: String(fav.id), sku: fav.sku || '', name: fav.name || '—', main_image: fav.image || '', presence: 'available', price: null } : null;
-                });
+
+            // 1) МИТТЄВО рендеримо зі збереженого снапшоту (фото вже є — гарантовано)
+            const snapshot = favorites.map(f => ({
+                id: String(f.id), sku: f.sku || '', name: f.name || '—',
+                main_image: f.image || '', price: f.price != null ? f.price : null,
+                presence: f.presence || 'available'
             }));
-            
-            // Доповнюємо старе обране, якому не вистачає фото (шукаємо за назвою)
-            for (let i = 0; i < products.length; i++) {
-                if (products[i] && (!products[i].main_image || products[i].main_image === '')) {
-                    try {
-                        const q = String(products[i].name || '').split(' ').slice(0, 3).join(' ');
-                        const d = await fetch(SERVER_URL + '/products/search?q=' + encodeURIComponent(q) + '&limit=5', { headers: H }).then(r => r.json());
-                        const found = d.products && d.products[0];
-                        if (found && found.main_image) products[i].main_image = found.main_image;
-                    } catch (e) {}
-                }
-            }
             inFavoritesView = true;
-            await renderProducts(products.filter(Boolean), 'favorites-container');
+            await renderProducts(snapshot, 'favorites-container');
             inFavoritesView = false;
-            // Кнопка очищення обраного — над списком
             const clearBtn = '<div style="padding:10px 14px 0;"><button onclick="clearFavorites()" style="width:100%;padding:11px;background:white;border:1.5px solid var(--border);border-radius:12px;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;">🗑 Очистити обране</button></div>';
             container.insertAdjacentHTML('afterbegin', clearBtn);
+
+            // 2) У ФОНІ освіжаємо ціну/наявність/фото (якщо змінились) — не блокує показ
+            refreshFavoritesInBackground();
+        }
+
+        async function refreshFavoritesInBackground() {
+            let changed = false;
+            for (const fav of favorites) {
+                try {
+                    const url = fav.sku ? SERVER_URL + '/products/sku/' + fav.sku : SERVER_URL + '/products/' + fav.id;
+                    const d = await fetch(url, { headers: H }).then(r => r.json());
+                    const p = d.product;
+                    if (!p) continue;
+                    // Оновлюємо лише якщо це справді той самий товар (звірка назви)
+                    if (fav.name && p.name && !namesMatch(p.name, fav.name)) continue;
+                    const newImg = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
+                    const newPrice = p.price != null ? Math.round(parseFloat(p.price)) : fav.price;
+                    const newPres = p.presence || fav.presence;
+                    if (newImg && newImg !== fav.image) { fav.image = newImg; changed = true; }
+                    if (newPrice != null && newPrice !== fav.price) { fav.price = newPrice; changed = true; }
+                    if (newPres !== fav.presence) { fav.presence = newPres; changed = true; }
+                } catch (e) {}
+            }
+            if (changed) {
+                localStorage.setItem('ir_favorites', JSON.stringify(favorites));
+                // Якщо досі в обраному — перемальовуємо з оновленими даними
+                if (document.getElementById('page-favorites').style.display !== 'none') {
+                    const snapshot = favorites.map(f => ({
+                        id: String(f.id), sku: f.sku || '', name: f.name || '—',
+                        main_image: f.image || '', price: f.price != null ? f.price : null,
+                        presence: f.presence || 'available'
+                    }));
+                    inFavoritesView = true;
+                    await renderProducts(snapshot, 'favorites-container');
+                    inFavoritesView = false;
+                    const clearBtn = '<div style="padding:10px 14px 0;"><button onclick="clearFavorites()" style="width:100%;padding:11px;background:white;border:1.5px solid var(--border);border-radius:12px;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;">🗑 Очистити обране</button></div>';
+                    document.getElementById('favorites-container').insertAdjacentHTML('afterbegin', clearBtn);
+                }
+            }
         }
 
         // --- CART ---
@@ -1511,9 +1539,11 @@
         function findCartItem(ref) {
             const sku = normSku(ref.sku);
             const id = String(ref.id || '');
+            // ЛИШЕ за артикулом або id. За назвою НЕ зливаємо — різні товари
+            // зі схожими назвами (Спідекс база/активатор) не повинні зливатись.
             return cart.find(i => sku && normSku(i.sku) === sku)
                 || cart.find(i => id && String(i.id) === id)
-                || cart.find(i => namesMatch(i.name, ref.name));
+                || null;
         }
 
         // Транслітерація кирилиці в латиницю — щоб "Дюрр"≈"Durr", "ІД"≈"ID".
@@ -1528,10 +1558,11 @@
         // Усе зводиться до латиниці, щоб кирилиця й латиниця одного товару збігались.
         function nameTokens(s) {
             const stop = new Set(['ta', 'na', 'dla', 'vid', 'abo', 'the', 'and', 'zasib', 'dezinfikuiuchyi']);
+            const KEEP1 = new Set(['m', 'l', 's']);   // односимвольні розміри лишаємо
             return translit(s)
                 .replace(/[^a-z0-9]+/gi, ' ')          // дужки, тире, крапки → пробіл
                 .split(' ')
-                .filter(w => w.length >= 2 && !stop.has(w));
+                .filter(w => (w.length >= 2 || KEEP1.has(w)) && !stop.has(w));
         }
 
         // Звірка назв стійка до перестановки слів і дужок.
@@ -1549,6 +1580,11 @@
             const numsA = [...setA].filter(w => /^\d+$/.test(w));
             const numsB = [...setB].filter(w => /^\d+$/.test(w));
             if (numsA.length && numsB.length && !numsA.some(n => numsB.includes(n))) return false;
+            // Розміри (xs/s/m/l/xl/xxl) — те саме: різний розмір = різний товар
+            const SIZES = new Set(['xs','s','m','l','xl','xxl','xxxl']);
+            const szA = [...setA].filter(w => SIZES.has(w));
+            const szB = [...setB].filter(w => SIZES.has(w));
+            if (szA.length && szB.length && !szA.some(s => szB.includes(s))) return false;
             return inter / union >= 0.55;   // Jaccard ≥ 0.55
         }
 
@@ -1718,8 +1754,25 @@
                         <div class="autocomplete-list" id="np-list" style="display:none"></div>
                     </div>
                     <input class="form-input" id="f-comment" placeholder="Коментар до замовлення" value="${savedData.comment || ''}">
+                    <label style="display:flex;align-items:center;gap:8px;margin:6px 2px 2px;font-size:13px;color:var(--text);cursor:pointer;">
+                        <input type="checkbox" id="f-other-recipient" ${savedData.otherRecipient ? 'checked' : ''} onchange="toggleRecipientFields(this.checked)" style="width:17px;height:17px;accent-color:var(--teal);">
+                        Інша людина отримає замовлення
+                    </label>
+                    <div id="recipient-fields" style="display:${savedData.otherRecipient ? 'block' : 'none'};margin-top:4px;">
+                        <input class="form-input" id="f-r-surname" placeholder="Прізвище отримувача *" value="${savedData.rSurname || ''}" oninput="validateName(this, 'e-r-surname')">
+                        <div class="form-error" id="e-r-surname">Тільки українські літери</div>
+                        <input class="form-input" id="f-r-name" placeholder="Імʼя отримувача *" value="${savedData.rName || ''}" oninput="validateName(this, 'e-r-name')">
+                        <div class="form-error" id="e-r-name">Тільки українські літери</div>
+                        <input class="form-input" id="f-r-phone" placeholder="Телефон отримувача +380... *" value="${savedData.rPhone || ''}" oninput="validatePhone(this, 'e-r-phone')">
+                        <div class="form-error" id="e-r-phone">Невірний формат. Приклад: +380671234567</div>
+                    </div>
                     <button class="btn-order-submit" onclick="submitOrder()">✅ Оформити замовлення</button>
                 </div>`;
+        }
+
+        function toggleRecipientFields(show) {
+            const box = document.getElementById('recipient-fields');
+            if (box) box.style.display = show ? 'block' : 'none';
         }
 
         function changeQty(id, delta) {
@@ -1827,10 +1880,11 @@
             document.getElementById(eId).classList.toggle('show', !ok && el.value.length > 0);
         }
 
-        function validatePhone(el) {
+        function validatePhone(el, errId) {
+            const eId = errId || 'e-phone';
             const ok = /^\+380\d{9}$/.test(el.value.replace(/\s/g, ''));
             el.classList.toggle('error', !ok && el.value.length > 0);
-            document.getElementById('e-phone').classList.toggle('show', !ok && el.value.length > 0);
+            document.getElementById(eId).classList.toggle('show', !ok && el.value.length > 0);
         }
 
         // --- SUBMIT ORDER ---
@@ -1871,8 +1925,22 @@
             }
             if (hasError) { showToast('Заповніть всі поля правильно'); return; }
 
+            // === ІНШИЙ ОТРИМУВАЧ ===
+            const otherRecipient = document.getElementById('f-other-recipient') && document.getElementById('f-other-recipient').checked;
+            let rName = '', rSurname = '', rPhone = '';
+            if (otherRecipient) {
+                rName = document.getElementById('f-r-name').value.trim();
+                rSurname = document.getElementById('f-r-surname').value.trim();
+                rPhone = document.getElementById('f-r-phone').value.trim().replace(/\s/g, '');
+                let rErr = false;
+                if (!rSurname || !/^[А-ЯҐЄІЇа-яґєії'\- ]+$/.test(rSurname)) { document.getElementById('f-r-surname').classList.add('error'); document.getElementById('e-r-surname').classList.add('show'); rErr = true; }
+                if (!rName || !/^[А-ЯҐЄІЇа-яґєії'\- ]+$/.test(rName)) { document.getElementById('f-r-name').classList.add('error'); document.getElementById('e-r-name').classList.add('show'); rErr = true; }
+                if (!rPhone || !/^\+380\d{9}$/.test(rPhone)) { document.getElementById('f-r-phone').classList.add('error'); document.getElementById('e-r-phone').classList.add('show'); rErr = true; }
+                if (rErr) { showToast('Заповніть дані отримувача правильно'); return; }
+            }
+
             // Зберігаємо дані клієнта
-            localStorage.setItem('ir_order_data', JSON.stringify({ name, surname, phone, city, np, comment, cityRef, warehouseRef }));
+            localStorage.setItem('ir_order_data', JSON.stringify({ name, surname, phone, city, np, comment, cityRef, warehouseRef, otherRecipient, rName, rSurname, rPhone }));
 
             const btn = document.querySelector('.btn-order-submit');
             btn.disabled = true;
@@ -1909,6 +1977,10 @@
                 order_num: orderNum,
                 city_ref: cityRef || '',
                 warehouse_ref: warehouseRef || '',
+                other_recipient: otherRecipient || false,
+                recipient_name: rName || '',
+                recipient_surname: rSurname || '',
+                recipient_phone: rPhone || '',
                 items: cart.map(i => ({ id: i.id, sku: i.sku || '', name: i.name, price: i.price, qty: i.qty, image: i.image || '' })),
                 total: cart.reduce((s, i) => s + i.price * i.qty, 0)
             };
