@@ -866,7 +866,7 @@
                 // зовнішні картинки (у вебі працюють і прямі, тому там "магія").
                 // Проксі проходить скрізь однаково.
                 const src = SERVER_URL + '/image?url=' + encodeURIComponent(rawImg2);
-                html += '<img class="tile-img" id="img-' + p.id + '" src="' + src + '" loading="lazy" ' +
+                html += '<img class="tile-img" id="img-' + p.id + '" src="' + src + '" ' +
                         'data-pid="' + p.id + '" onerror="this.outerHTML=\'<div class=&quot;tile-img-placeholder&quot; id=&quot;img-' + p.id + '&quot;>🦷</div>\'">';
             } else {
                 html += '<div class="tile-img-placeholder" id="img-' + p.id + '">🦷</div>';
@@ -1353,9 +1353,8 @@
 
         function openNpTracking(ttn) {
             const clean = String(ttn || '').replace(/\D/g, '');
-            // Копіюємо ТТН у буфер, щоб клієнт міг одразу вставити на сайті
             try { navigator.clipboard.writeText(clean); } catch (e) {}
-            const url = 'https://tracking.novaposhta.ua/#/uk/tracking?cargo_number=' + clean;
+            const url = 'https://tracking.novaposhta.ua/#/uk';
             try {
                 if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink) {
                     Telegram.WebApp.openLink(url);
@@ -2129,6 +2128,6 @@
         updateBadges();
         loadGroupsFromServer();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-A</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-B</div>
 </body>
 </html>
