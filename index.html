@@ -1471,17 +1471,17 @@
             if (!favorites.length) { container.innerHTML = '<div class="state-box"><div class="icon">♡</div><p>Ви ще нічого не додали в обране</p></div>'; return; }
             container.innerHTML = '<div class="state-box"><div class="spinner"></div></div>';
 
-            // Завантажуємо свіжі дані (перевірений підхід — фото завжди є)
+            // Завантажуємо свіжі дані через universal resolve (фото ГАРАНТОВАНО)
             const products = await Promise.all(favorites.map(async fav => {
                 try {
-                    const url = fav.sku
-                        ? SERVER_URL + '/products/sku/' + fav.sku
-                        : SERVER_URL + '/products/' + fav.id;
+                    const url = SERVER_URL + '/products/resolve?id=' + encodeURIComponent(fav.id || '')
+                              + '&sku=' + encodeURIComponent(fav.sku || '')
+                              + '&name=' + encodeURIComponent(fav.name || '');
                     const d = await fetch(url, { headers: H }).then(r => r.json());
                     if (d.product) {
+                        // id лишаємо як у обраному (щоб серце і навігація збігались)
                         d.product.id = String(fav.id);
                         d.product.sku = fav.sku || d.product.sku || '';
-                        // Оновлюємо снапшот свіжими даними (миттєвий показ наступного разу)
                         const img = d.product.main_image || (d.product.images && d.product.images[0] && d.product.images[0].url) || '';
                         if (img) fav.image = img;
                         if (d.product.name) fav.name = d.product.name;
@@ -1490,7 +1490,7 @@
                         return d.product;
                     }
                 } catch (e) {}
-                // Фолбек: показуємо зі снапшоту
+                // Фолбек: показуємо зі снапшоту (фото з минулого разу)
                 return { id: String(fav.id), sku: fav.sku || '', name: fav.name || '—',
                          main_image: fav.image || '', price: fav.price, presence: fav.presence || 'available' };
             }));
