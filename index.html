@@ -205,6 +205,11 @@
         <div class="categories-grid" id="categories-grid">
             <div style="grid-column:1/-1" class="state-box"><div class="spinner"></div></div>
         </div>
+        <!-- Товари кореня поточної категорії (після підкатегорій) -->
+        <div id="root-products-wrap" style="display:none; padding-bottom:70px;">
+            <div class="section-title" style="margin-top:6px;">📦 Товари категорії</div>
+            <div id="root-products-container"></div>
+        </div>
     </div>
 
     <!-- PRODUCTS -->
@@ -436,6 +441,8 @@
             document.getElementById('btnBack').style.display = 'none';
             document.getElementById('headerTitle').textContent = '🦷 IRadius Dental Shop';
             document.getElementById('catalog-title').textContent = 'Категорії';
+            const rpw = document.getElementById('root-products-wrap');
+            if (rpw) rpw.style.display = 'none';
             isSearchMode = false;
             groupStack = [];
             currentGroupId = null;
@@ -561,11 +568,29 @@
             if (hasChildren) {
                 showPage('main');
                 renderGroups(getChildGroups(id));
-                // Якщо в категорії є й підкатегорії, І кореневі товари — завантажуємо товари
-                // (вони додадуться до сітки продуктів внизу, коли користувач прокрутить)
+                // Завантажуємо кореневі товари цієї категорії прямо після підкатегорій
+                loadRootProducts(id);
             } else {
-                // Якщо тільки кореневі товари — одразу їх показуємо
                 loadGroupProducts(id);
+            }
+        }
+
+        // Завантажує товари категорії в контейнер на page-main (після підкатегорій)
+        async function loadRootProducts(groupId) {
+            const wrap = document.getElementById('root-products-wrap');
+            const container = document.getElementById('root-products-container');
+            if (!wrap) return;
+            wrap.style.display = 'none';
+            container.innerHTML = '<div class="state-box"><div class="spinner"></div></div>';
+            try {
+                const res = await fetch(SERVER_URL + '/products?group_id=' + groupId + '&limit=100', { headers: H });
+                const data = await res.json();
+                const products = (data.products || []);
+                if (!products.length) { wrap.style.display = 'none'; return; }
+                wrap.style.display = 'block';
+                await renderProducts(products, 'root-products-container', false);
+            } catch (e) {
+                wrap.style.display = 'none';
             }
         }
 
@@ -1509,24 +1534,22 @@
                 .filter(w => w.length >= 2 && !stop.has(w));
         }
 
-        // Звірка назв стійка до перестановки слів і дужок: порівнює НАБІР слів.
-        // "Спідекс активатор" ≈ "Активатор Спідекс (50мл)", але ≠ "Рукавички Медіок".
+        // Звірка назв стійка до перестановки слів і дужок.
+        // Використовує Jaccard similarity: перетин / об'єднання.
+        // Це важливо для Спідекс база vs Спідекс активатор —
+        // вони мають 6 спільних бренд-слів, але повинні різнитись.
         function namesMatch(a, b) {
             const A = nameTokens(a), B = nameTokens(b);
-            if (!A.length || !B.length) {
-                const x = String(a || '').trim().toLowerCase();
-                const y = String(b || '').trim().toLowerCase();
-                return !!x && x === y;
-            }
-            const setB = new Set(B);
-            const inter = A.filter(w => setB.has(w)).length;
-            // Якщо обидві назви містять числа і вони НЕ збігаються — це різні товари
-            // (напр. штифти №15 vs №20). Числа = розмір/обʼєм, вони вирішальні.
-            const numsA = A.filter(w => /^\d+$/.test(w));
-            const numsB = B.filter(w => /^\d+$/.test(w));
+            if (!A.length || !B.length) return false;
+            const setA = new Set(A), setB = new Set(B);
+            const inter = [...setA].filter(w => setB.has(w)).length;
+            const union = setA.size + setB.size - inter;
+            if (union === 0) return false;
+            // Числа (розміри/об'єми) — якщо обидві мають і вони різні → різні товари
+            const numsA = [...setA].filter(w => /^\d+$/.test(w));
+            const numsB = [...setB].filter(w => /^\d+$/.test(w));
             if (numsA.length && numsB.length && !numsA.some(n => numsB.includes(n))) return false;
-            // overlap = спільні слова / менший набір; ≥0.6 → той самий товар
-            return inter / Math.min(A.length, B.length) >= 0.6;
+            return inter / union >= 0.55;   // Jaccard ≥ 0.55
         }
 
         // Знаходить актуальний товар з каталогу, що ВІДПОВІДАЄ позиції кошика за назвою.
