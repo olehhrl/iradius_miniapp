@@ -214,7 +214,7 @@
             <button class="sort-btn" id="sort-cheap" onclick="setSort('price', this)">💰 Дешевші</button>
             <button class="sort-btn" id="sort-expensive" onclick="setSort('-price', this)">💎 Дорожчі</button>
             <button class="sort-btn" id="sort-popular" onclick="setSort('popularity', this)">🔥 Популярні</button>
-            <button class="sort-btn" id="sort-name" onclick="setSort('name', this)">🔤 За назвою</button>
+            <button class="sort-btn" id="sort-name" onclick="toggleNameSort(this)">🔤 А–Я</button>
         </div>
         <div id="products-container"></div>
         <div class="pagination" id="pagination" style="display:none;">
@@ -475,6 +475,27 @@
             }
         }
 
+        // --- СВАЙП «НАЗАД» (від лівого краю вправо), як на Android/iOS ---
+        (function() {
+            let sx = 0, sy = 0, edge = false, t0 = 0;
+            document.addEventListener('touchstart', e => {
+                const t = e.touches[0];
+                sx = t.clientX; sy = t.clientY; t0 = Date.now();
+                edge = sx <= 30;            // старт біля лівого краю
+            }, { passive: true });
+            document.addEventListener('touchend', e => {
+                if (!edge) return;
+                const t = e.changedTouches[0];
+                const dx = t.clientX - sx, dy = Math.abs(t.clientY - sy);
+                const dt = Date.now() - t0;
+                // горизонтальний рух вправо, майже без вертикального, досить швидко
+                if (dx > 60 && dy < 50 && dt < 600) {
+                    const back = document.getElementById('btnBack');
+                    if (back && back.style.display !== 'none') { goBack(); haptic && haptic('light'); }
+                }
+            }, { passive: true });
+        })();
+
         // --- GROUPS ---
         function getRootGroups() {
             const allIds = new Set(allGroups.map(g => g.id));
@@ -586,6 +607,29 @@
             }
         }
 
+        // Кнопка «За назвою» перемикає напрям: А–Я ↔ Я–А
+        function toggleNameSort(el) {
+            currentSort = (currentSort === 'name') ? '-name' : 'name';
+            el.textContent = (currentSort === 'name') ? '🔤 А–Я' : '🔤 Я–А';
+            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            if (isSearchMode) searchProducts(lastSearchQuery);
+            else loadProducts(1, currentGroupId);
+        }
+
+        // Клієнтське сортування за українським алфавітом (надійніше за серверне).
+        // Доступні товари — зверху, недоступні — внизу; усередині груп — за абеткою.
+        function sortClient(list) {
+            if (currentSort !== 'name' && currentSort !== '-name') return list;
+            const dir = currentSort === '-name' ? -1 : 1;
+            return list.slice().sort((a, b) => {
+                const av = (a.presence === 'available') ? 0 : 1;
+                const bv = (b.presence === 'available') ? 0 : 1;
+                if (av !== bv) return av - bv;
+                return dir * String(a.name || '').localeCompare(String(b.name || ''), 'uk', { sensitivity: 'base', numeric: true });
+            });
+        }
+
         // --- SEARCH ---
         function doSearch() {
             const q = document.getElementById('searchInput').value.trim();
@@ -666,7 +710,7 @@
 
                 if (data.full) {
                     // Сервер віддав весь відсортований список — показуємо першу порцію, решту нарізаємо локально
-                    fullList = products;
+                    fullList = sortClient(products);
                     const slice = fullList.slice(0, LIMIT);
                     await renderProducts(slice, 'products-container', false);
                     localOffset = slice.length;
@@ -757,7 +801,9 @@
             const presence = p.presence === 'available'
                 ? '<span class="presence-available">✅ В наявності</span>'
                 : '<span class="presence-unavailable">❌ Немає</span>';
-            const rawImg2 = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
+            const rawImg2 = p.main_image || p.image || (p.images && p.images[0] && p.images[0].url) || '';
+            const nameEsc = (p.name||'').replace(/\'/g,"\\\'");
+            const imgEsc = rawImg2.replace(/\'/g,"\\\'");
             let html = '<div class="product-tile' + (p.presence !== 'available' ? ' unavailable' : '') + '" onclick="openDetail(' + p.id + ', \'' + (p.sku || '') + '\'  )">';
             html += '<div class="tile-img-wrap">';
             html += '<div class="tile-img-placeholder" id="img-' + p.id + '">🦷</div>';
@@ -767,13 +813,11 @@
             if (p.sku) html += '<div class="tile-sku">Арт: ' + p.sku + '</div>';
             html += '<div class="tile-presence-row" style="display:flex;align-items:center;justify-content:space-between;margin-top:3px">';
             html += '<div class="tile-presence">' + presence + '</div>';
-            html += '<button class="tile-btn tile-fav ' + (isFav ? 'active' : '') + '" id="fav-' + p.id + '" onclick="event.stopPropagation();toggleFavTile(' + p.id + ', \'' + (p.sku || '') + '\')">' + heartSVG(isFav) + '</button>';
+            html += '<button class="tile-btn tile-fav ' + (isFav ? 'active' : '') + '" id="fav-' + p.id + '" onclick="event.stopPropagation();toggleFavTile(' + p.id + ', \'' + (p.sku || '') + '\', \'' + nameEsc + '\', \'' + imgEsc + '\')">' + heartSVG(isFav) + '</button>';
             html += '</div>';
             html += '<div class="tile-bottom">';
             html += '<div class="tile-price">' + (price ? price + ' <span>грн</span>' : '—') + '</div>';
             const isAvailable = p.presence === 'available';
-            const nameEsc = (p.name||'').replace(/\'/g,"\\\'");
-            const imgEsc = rawImg2.replace(/\'/g,"\\\'");
             if (inCart) {
                 html += '<div class="tile-qty-ctrl" id="qty-ctrl-' + p.id + '" onclick="event.stopPropagation()">';
                 html += '<button class="tile-qty-btn" onclick="tileChangeQty(' + p.id + ', -1, \'' + nameEsc + '\', ' + (price||0) + ', \'' + imgEsc + '\', \'' + (p.sku||'') + '\')">−</button>';
@@ -790,7 +834,7 @@
         }
 
         async function loadTileImage(p) {
-            const rawImg = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
+            const rawImg = p.main_image || p.image || (p.images && p.images[0] && p.images[0].url) || '';
             if (!rawImg) return;
             const el = document.getElementById('img-' + p.id);
             if (!el) return;
@@ -1047,11 +1091,11 @@
         }
 
         // --- FAVORITES ---
-        function toggleFavTile(id, sku) {
+        function toggleFavTile(id, sku, name, image) {
             const idx = favorites.findIndex(f => String(f.id) === String(id));
             const btn = document.getElementById('fav-' + id);
             if (idx === -1) {
-                favorites.push({ id: String(id), sku: sku || '' });
+                favorites.push({ id: String(id), sku: sku || '', name: name || '', image: image || '' });
                 if (btn) { btn.innerHTML = heartSVG(true); btn.classList.add('active'); }
                 showToast('Додано в обране');
                 haptic('light');
@@ -1071,7 +1115,9 @@
 
         function toggleFavorite() {
             const sku = currentProductData ? (currentProductData.sku || '') : '';
-            toggleFavTile(currentProductId, sku);
+            const nm = currentProductData ? (currentProductData.name || '') : '';
+            const img = currentProductData ? (currentProductData.main_image || currentProductData.image || '') : '';
+            toggleFavTile(currentProductId, sku, nm, img);
             updateFavDetailBtn();
         }
 
@@ -1401,9 +1447,21 @@
                     if (d.product) {
                         d.product.id = String(fav.id);
                         d.product.sku = fav.sku || d.product.sku || '';
+                        // Запасне фото/назва зі збереженого обраного (якщо сервер не дав)
+                        if (!d.product.main_image && !d.product.image && fav.image) d.product.main_image = fav.image;
+                        if (!d.product.name && fav.name) d.product.name = fav.name;
+                        return d.product;
                     }
-                    return d.product;
-                }).catch(() => null);
+                    // Сервер нічого не повернув — показуємо те, що збережено в обраному
+                    if (fav.name || fav.image) {
+                        return { id: String(fav.id), sku: fav.sku || '', name: fav.name || '—', main_image: fav.image || '', presence: 'available', price: null };
+                    }
+                    return null;
+                }).catch(() => {
+                    return (fav.name || fav.image)
+                        ? { id: String(fav.id), sku: fav.sku || '', name: fav.name || '—', main_image: fav.image || '', presence: 'available', price: null }
+                        : null;
+                });
             }));
             inFavoritesView = true;
             await renderProducts(products.filter(Boolean), 'favorites-container');
@@ -1480,16 +1538,13 @@
             const skuStr = String(item.sku || '').trim();
             const skuValid = skuStr && !['0', 'undefined', 'null'].includes(skuStr);
 
-            // 1) ГОЛОВНЕ: пошук за артикулом (Prom і MODX мають однакові артикули).
-            // Якщо знайдений товар має ТОЧНО той самий артикул — це той самий товар,
-            // навіть якщо назва трохи інша (переставлені слова, дужки).
+            // 1) Пошук за артикулом. УВАГА: артикули в KeyCRM ненадійні — той самий
+            // артикул може вести на ІНШИЙ товар у MODX. Тому приймаємо результат
+            // ЛИШЕ якщо збігається НАЗВА (артикул сам по собі не є доказом).
             if (skuValid) {
                 try {
                     const d = await (await fetch(SERVER_URL + '/products/sku/' + encodeURIComponent(skuStr), { headers: H })).json();
-                    if (d.product) {
-                        const sameSku = normSku(d.product.sku) === normSku(skuStr);
-                        if (sameSku || namesMatch(d.product.name, item.name)) return d.product;
-                    }
+                    if (d.product && namesMatch(d.product.name, item.name)) return d.product;
                 } catch (e) {}
             }
             // 2) Prom за id (якщо схоже на Prom id) — звіряємо назву
@@ -1499,15 +1554,14 @@
                     if (d.product && namesMatch(d.product.name, item.name)) return d.product;
                 } catch (e) {}
             }
-            // 3) Запасний варіант — пошук за назвою (артикул із KeyCRM буває ненадійний)
+            // 3) Запасний варіант — пошук за назвою. Беремо лише той результат,
+            // у якого НАЗВА збігається (артикул для вибору не використовуємо).
             try {
                 const q = String(item.name || '').split(' ').slice(0, 4).join(' ').trim();
                 if (q.length >= 2) {
                     const d = await (await fetch(SERVER_URL + '/products/search?q=' + encodeURIComponent(q) + '&limit=20', { headers: H })).json();
                     const list = d.products || [];
-                    // спершу той, у кого збігається артикул; інакше — за назвою
-                    const found = list.find(p => skuValid && normSku(p.sku) === normSku(skuStr))
-                               || list.find(p => namesMatch(p.name, item.name));
+                    const found = list.find(p => namesMatch(p.name, item.name));
                     if (found) return found;
                 }
             } catch (e) {}
