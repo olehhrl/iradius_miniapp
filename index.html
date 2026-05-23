@@ -861,16 +861,7 @@
             const imgEsc = rawImg2.replace(/\'/g,"\\\'");
             let html = '<div class="product-tile' + (p.presence !== 'available' ? ' unavailable' : '') + '" onclick="openDetail(' + p.id + ', \'' + (p.sku || '') + '\'  )">';
             html += '<div class="tile-img-wrap">';
-            if (rawImg2) {
-                // ВСЕ через проксі сервера — на телефоні Telegram WebView блокує прямі
-                // зовнішні картинки (у вебі працюють і прямі, тому там "магія").
-                // Проксі проходить скрізь однаково.
-                const src = SERVER_URL + '/image?url=' + encodeURIComponent(rawImg2);
-                html += '<img class="tile-img" id="img-' + p.id + '" src="' + src + '" ' +
-                        'data-pid="' + p.id + '" onerror="this.outerHTML=\'<div class=&quot;tile-img-placeholder&quot; id=&quot;img-' + p.id + '&quot;>🦷</div>\'">';
-            } else {
-                html += '<div class="tile-img-placeholder" id="img-' + p.id + '">🦷</div>';
-            }
+            html += '<div class="tile-img-placeholder" id="img-' + p.id + '">🦷</div>';
             html += '</div>';
             html += '<div class="tile-body">';
             html += '<div class="tile-name">' + (p.name || '—') + '</div>';
@@ -918,18 +909,13 @@
             const rawImg = p.main_image || p.image || (p.images && p.images[0] && p.images[0].url) || '';
             const el = document.getElementById('img-' + p.id);
             if (!el || el.tagName === 'IMG') return;
-            if (!rawImg) { console.log('[img] НЕМАЄ фото для', p.id, p.name); return; }
-            console.log('[img]', p.id, '→', rawImg.slice(0, 60));
-            if (rawImg.startsWith('https://iradius.com.ua')) {
-                // Пряме фото з сайту; якщо не завантажиться (onerror) — пробуємо проксі
-                el.outerHTML = '<img class="tile-img" id="img-' + p.id + '" src="' + rawImg +
-                    '" onerror="loadTileImageProxy(\'' + p.id + '\',\'' + rawImg.replace(/'/g, "\\'") + '\')">';
-            } else {
-                const blobUrl = await loadImageBlob(rawImg);
-                const el2 = document.getElementById('img-' + p.id);
-                if (blobUrl && el2 && el2.tagName !== 'IMG') {
-                    el2.outerHTML = '<img class="tile-img" id="img-' + p.id + '" src="' + blobUrl + '">';
-                }
+            if (!rawImg) return;
+            // ЗАВЖДИ через loadImageBlob: fetch на проксі /image йде з ngrok-заголовком,
+            // повертає blob. Прямий <img src> (хоч iradius, хоч ngrok) дає 403/блок у WebView.
+            const blobUrl = await loadImageBlob(rawImg);
+            const el2 = document.getElementById('img-' + p.id);
+            if (blobUrl && el2 && el2.tagName !== 'IMG') {
+                el2.outerHTML = '<img class="tile-img" id="img-' + p.id + '" src="' + blobUrl + '">';
             }
         }
 
@@ -957,7 +943,9 @@
             if (!grid) return;
 
             grid.insertAdjacentHTML('beforeend', products.map(buildTileHTML).join(''));
-            // Фото вже вшите прямо в HTML кожної плитки (через проксі) — окремий крок не потрібен
+            // Фото — через loadTileImage (fetch з ngrok-заголовком → blob), бо прямий
+            // <img src> на ngrok дає 403 (попередження браузера). Паралельно.
+            products.forEach(p => { loadTileImage(p); });
         }
 
 
@@ -2128,6 +2116,6 @@
         updateBadges();
         loadGroupsFromServer();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-B</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-C</div>
 </body>
 </html>
