@@ -1487,39 +1487,31 @@
         }
 
         async function refreshFavoritesInBackground() {
-            let changed = false;
+            let storeChanged = false;
+            const onFavPage = () => document.getElementById('page-favorites').style.display !== 'none';
             for (const fav of favorites) {
                 try {
                     const url = fav.sku ? SERVER_URL + '/products/sku/' + fav.sku : SERVER_URL + '/products/' + fav.id;
                     const d = await fetch(url, { headers: H }).then(r => r.json());
                     const p = d.product;
                     if (!p) continue;
-                    // Оновлюємо лише якщо це справді той самий товар (звірка назви)
-                    if (fav.name && p.name && !namesMatch(p.name, fav.name)) continue;
                     const newImg = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
                     const newPrice = p.price != null ? Math.round(parseFloat(p.price)) : fav.price;
                     const newPres = p.presence || fav.presence;
-                    if (newImg && newImg !== fav.image) { fav.image = newImg; changed = true; }
-                    if (newPrice != null && newPrice !== fav.price) { fav.price = newPrice; changed = true; }
-                    if (newPres !== fav.presence) { fav.presence = newPres; changed = true; }
+                    // Зберігаємо в снапшот (щоб наступного разу показалось миттєво)
+                    if (newImg && newImg !== fav.image) { fav.image = newImg; storeChanged = true; }
+                    if (newPrice != null && newPrice !== fav.price) { fav.price = newPrice; storeChanged = true; }
+                    if (newPres && newPres !== fav.presence) { fav.presence = newPres; storeChanged = true; }
+                    // Оновлюємо плитку НАПРЯМУ (без повного ре-рендеру) — фото зʼявляється одразу
+                    if (onFavPage() && newImg) {
+                        const el = document.getElementById('img-' + fav.id);
+                        if (el && el.tagName !== 'IMG') {
+                            await loadTileImage({ id: fav.id, main_image: newImg });
+                        }
+                    }
                 } catch (e) {}
             }
-            if (changed) {
-                localStorage.setItem('ir_favorites', JSON.stringify(favorites));
-                // Якщо досі в обраному — перемальовуємо з оновленими даними
-                if (document.getElementById('page-favorites').style.display !== 'none') {
-                    const snapshot = favorites.map(f => ({
-                        id: String(f.id), sku: f.sku || '', name: f.name || '—',
-                        main_image: f.image || '', price: f.price != null ? f.price : null,
-                        presence: f.presence || 'available'
-                    }));
-                    inFavoritesView = true;
-                    await renderProducts(snapshot, 'favorites-container');
-                    inFavoritesView = false;
-                    const clearBtn = '<div style="padding:10px 14px 0;"><button onclick="clearFavorites()" style="width:100%;padding:11px;background:white;border:1.5px solid var(--border);border-radius:12px;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;">🗑 Очистити обране</button></div>';
-                    document.getElementById('favorites-container').insertAdjacentHTML('afterbegin', clearBtn);
-                }
-            }
+            if (storeChanged) localStorage.setItem('ir_favorites', JSON.stringify(favorites));
         }
 
         // --- CART ---
