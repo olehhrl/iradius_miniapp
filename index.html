@@ -429,6 +429,8 @@
             pages.forEach(id => document.getElementById(id).style.display = 'none');
             document.getElementById('page-' + name).style.display = 'block';
             syncBackButton(name === 'main');
+            // Пошуковий рядок тільки на каталозі та результатах пошуку
+            toggleSearchBar(name === 'main' || name === 'products');
         }
 
         function setNav(active) {
@@ -771,6 +773,12 @@
             isSearchMode = false;
             lastSearchQuery = '';
             hideSearchHistory();
+        }
+
+        // Показувати пошуковий рядок тільки в каталозі і результатах пошуку
+        function toggleSearchBar(show) {
+            document.querySelector('.search-wrap').style.display = show ? 'flex' : 'none';
+            if (!show) hideSearchHistory();
         }
 
         // --- SEARCH ---
@@ -2245,6 +2253,6 @@
         updateBadges();
         loadGroupsFromServer();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-G</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-H</div>
 </body>
 </html>
