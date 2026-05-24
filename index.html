@@ -23,13 +23,14 @@
         }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-        .header { background: var(--teal); color: white; padding: 8px 16px; display: flex; align-items: center; justify-content: center; position: sticky; top: 0; z-index: 200; min-height: 37px; }
-        .header-title { font-size: 16px; font-weight: 700; }
-        .header-back { position: absolute; left: 12px; background: none; border: none; color: white; font-size: 22px; cursor: pointer; display: none; line-height: 1; }
+        .header { background: var(--teal); color: white; display: flex; flex-direction: column; position: sticky; top: 0; z-index: 200; }
+        .header-title { font-size: 15px; font-weight: 700; text-align: center; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .header-back { background: none; border: none; color: white; font-size: 22px; cursor: pointer; display: none; line-height: 1; padding: 0 4px; flex-shrink: 0; }
 
-        .search-wrap { position: sticky; top: 37px; z-index: 190; background: var(--white); padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; }
-        .search-wrap input { flex: 1; width: 100%; padding: 10px 16px; border: 1.5px solid var(--border); border-radius: 20px; font-size: 14px; background: var(--bg); outline: none; }
-        .search-wrap input:focus { border-color: var(--teal); }
+        .search-wrap { padding: 0 12px 8px; display: flex; position: relative; }
+        .search-wrap input { flex: 1; width: 100%; padding: 8px 14px; border: none; border-radius: 18px; font-size: 13px; background: rgba(255,255,255,.9); outline: none; }
+        .search-wrap input:focus { background: white; }
+        .search-wrap input::placeholder { color: #999; }
 
         .content { padding-bottom: 70px; }
         .section-title { padding: 14px 14px 8px; font-size: 14px; font-weight: 700; color: var(--teal-dark); text-transform: uppercase; letter-spacing: 0.5px; }
@@ -198,12 +199,13 @@
 </head>
 <body>
     <div class="header">
-        <button class="header-back" id="btnBack" onclick="goBack()">←</button>
-        <div class="header-title" id="headerTitle">🦷 IRadius Dental Shop</div>
-    </div>
-
-    <div class="search-wrap">
-        <input type="text" id="searchInput" placeholder="🔍 Пошук товарів...">
+        <div style="display:flex;align-items:center;padding:0 10px;">
+            <button class="header-back" id="btnBack" onclick="goBack()">←</button>
+            <div class="header-title" id="headerTitle">🦷 IRadius Dental Shop</div>
+        </div>
+        <div class="search-wrap" id="searchWrap">
+            <input type="text" id="searchInput" placeholder="🔍 Пошук товарів...">
+        </div>
     </div>
 
     <!-- CATALOG -->
@@ -777,7 +779,8 @@
 
         // Показувати пошуковий рядок тільки в каталозі і результатах пошуку
         function toggleSearchBar(show) {
-            document.querySelector('.search-wrap').style.display = show ? 'flex' : 'none';
+            const sw = document.getElementById('searchWrap');
+            if (sw) sw.style.display = show ? 'flex' : 'none';
             if (!show) hideSearchHistory();
         }
 
@@ -1265,20 +1268,33 @@
 
                 // Хлібні крихти: шлях категорії товару (клікабельний)
                 const bc = document.getElementById('detail-breadcrumb');
-                const gid = p.group_id || (p.group && p.group.id);
-                if (gid && allGroups.length) {
-                    const path = [];
-                    let cur = allGroups.find(g => g.id === gid);
-                    while (cur) {
-                        path.unshift(cur);
-                        cur = allGroups.find(g => g.id === cur.parent_group_id);
+                bc.innerHTML = '';
+                // 1) Якщо є groupStack (відкрито з каталогу) — показуємо його
+                if (groupStack.length) {
+                    bc.innerHTML = '📁 ' + groupStack.map(g =>
+                        '<a href="#" onclick="event.preventDefault();goToGroup(' + g.id + ',\'' + g.name.replace(/'/g, "\\'") + '\')" style="color:var(--teal);text-decoration:none;">' + g.name + '</a>'
+                    ).join(' › ');
+                // 2) Якщо є group_id з Prom — будуємо шлях з allGroups
+                } else {
+                    const gid = p.group_id || (p.group && p.group.id);
+                    if (gid && allGroups.length) {
+                        const path = [];
+                        let cur = allGroups.find(g => g.id === gid);
+                        while (cur) {
+                            path.unshift(cur);
+                            cur = allGroups.find(g => g.id === cur.parent_group_id);
+                        }
+                        if (path.length) {
+                            bc.innerHTML = '📁 ' + path.map(g => {
+                                const name = (g.name_multilang && g.name_multilang.uk) || g.name || '—';
+                                return '<a href="#" onclick="event.preventDefault();goToGroup(' + g.id + ',\'' + name.replace(/'/g, "\\'") + '\')" style="color:var(--teal);text-decoration:none;">' + name + '</a>';
+                            }).join(' › ');
+                        }
                     }
-                    if (path.length) {
-                        bc.innerHTML = '📁 ' + path.map(g => {
-                            const name = (g.name_multilang && g.name_multilang.uk) || g.name || '—';
-                            return '<a href="#" onclick="event.preventDefault();goToGroup(' + g.id + ',\'' + name.replace(/'/g, "\\'") + '\')" style="color:var(--teal);text-decoration:none;">' + name + '</a>';
-                        }).join(' › ');
-                    }
+                }
+                // 3) Якщо пошук — показуємо контекст пошуку
+                if (!bc.innerHTML && lastSearchQuery) {
+                    bc.innerHTML = '🔍 Знайдено через пошук: <b>' + lastSearchQuery + '</b>';
                 }
                 document.getElementById('detail-sku').textContent = p.sku ? 'Артикул: ' + p.sku : '';
                 document.getElementById('detail-price').innerHTML = p.price ? Math.round(parseFloat(p.price)) + ' <span>грн</span>' : '—';
@@ -2253,6 +2269,6 @@
         updateBadges();
         loadGroupsFromServer();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-H</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-J</div>
 </body>
 </html>
