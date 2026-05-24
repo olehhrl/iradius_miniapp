@@ -494,8 +494,11 @@
                     showPage('main');
                     renderGroups(parentId ? getChildGroups(parentId) : getRootGroups());
                     renderBreadcrumb();
-                    document.getElementById('catalog-title').textContent = groupStack.length > 0 ? groupStack[groupStack.length-1].name : 'Категорії';
+                    const title = groupStack.length > 0 ? groupStack[groupStack.length-1].name : 'Категорії';
+                    document.getElementById('catalog-title').textContent = title;
+                    document.getElementById('headerTitle').textContent = groupStack.length > 0 ? title : '🦷 IRadius Dental Shop';
                     if (groupStack.length === 0) document.getElementById('btnBack').style.display = 'none';
+                    if (parentId) loadRootProducts(parentId);
                 } else {
                     goHome();
                 }
@@ -815,7 +818,6 @@
             }
             if (q.length < 2) return;
             searchTimer = setTimeout(() => {
-                hideSearchHistory();
                 isSearchMode = true;
                 lastSearchQuery = q;
                 showPage('products');
@@ -2269,6 +2271,6 @@
         updateBadges();
         loadGroupsFromServer();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-J</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-K</div>
 </body>
 </html>
