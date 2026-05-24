@@ -239,6 +239,7 @@
 
     <!-- DETAIL -->
     <div id="page-detail">
+        <div id="detail-breadcrumb" style="padding:8px 14px 0;font-size:11px;color:var(--text-muted);"></div>
         <div id="detail-img-wrap" class="detail-img-wrap"><div class="spinner"></div></div>
         <div class="detail-body">
             <div class="detail-name" id="detail-name"></div>
@@ -448,6 +449,7 @@
         // --- NAV ---
         function goHome() {
             showPage('main');
+            clearSearch();
             document.getElementById('btnBack').style.display = 'none';
             document.getElementById('headerTitle').textContent = '🦷 IRadius Dental Shop';
             document.getElementById('catalog-title').textContent = 'Категорії';
@@ -578,6 +580,35 @@
             grid.innerHTML = html;
         }
 
+        // Перехід у конкретну категорію (з breadcrumb на картці товару)
+        function goToGroup(id, name) {
+            clearSearch();
+            groupStack = [];
+            currentGroupId = null;
+            // Будуємо стек батьків
+            const path = [];
+            let cur = allGroups.find(g => g.id === id);
+            while (cur) { path.unshift(cur); cur = allGroups.find(g => g.id === cur.parent_group_id); }
+            const hasChildren = allGroups.some(c => c.parent_group_id === id);
+            for (const g of path) {
+                const n = (g.name_multilang && g.name_multilang.uk) || g.name || '—';
+                groupStack.push({ id: g.id, name: n });
+            }
+            renderBreadcrumb();
+            currentGroupId = id;
+            document.getElementById('btnBack').style.display = 'block';
+            document.getElementById('catalog-title').textContent = name;
+            document.getElementById('headerTitle').textContent = name;
+            setNav('nav-catalog');
+            if (hasChildren) {
+                showPage('main');
+                renderGroups(getChildGroups(id));
+                loadRootProducts(id);
+            } else {
+                loadGroupProducts(id);
+            }
+        }
+
         function openGroup(id, name, hasChildren) {
             currentGroupId = id;
             groupStack.push({ id, name });
@@ -673,11 +704,78 @@
             });
         }
 
+        // --- SEARCH HISTORY ---
+        const SEARCH_HIST_KEY = 'ir_search_history';
+        const SEARCH_HIST_MAX = 10;
+        function getSearchHistory() {
+            try { return JSON.parse(localStorage.getItem(SEARCH_HIST_KEY) || '[]'); } catch { return []; }
+        }
+        function saveSearchToHistory(q) {
+            let h = getSearchHistory().filter(x => x.toLowerCase() !== q.toLowerCase());
+            h.unshift(q);
+            if (h.length > SEARCH_HIST_MAX) h = h.slice(0, SEARCH_HIST_MAX);
+            localStorage.setItem(SEARCH_HIST_KEY, JSON.stringify(h));
+        }
+        function removeSearchHistItem(idx) {
+            const h = getSearchHistory(); h.splice(idx, 1);
+            localStorage.setItem(SEARCH_HIST_KEY, JSON.stringify(h));
+            showSearchHistory();
+        }
+        function clearSearchHistory() {
+            localStorage.removeItem(SEARCH_HIST_KEY);
+            hideSearchHistory();
+        }
+        function showSearchHistory() {
+            let box = document.getElementById('search-history-box');
+            if (!box) {
+                box = document.createElement('div');
+                box.id = 'search-history-box';
+                box.style.cssText = 'position:absolute;left:0;right:0;top:100%;background:white;border:1px solid var(--border);border-radius:0 0 12px 12px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:100;max-height:260px;overflow-y:auto;';
+                document.querySelector('.search-wrap').style.position = 'relative';
+                document.querySelector('.search-wrap').appendChild(box);
+            }
+            const h = getSearchHistory();
+            if (!h.length) { hideSearchHistory(); return; }
+            let html = '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px 4px;"><span style="font-size:11px;color:var(--text-muted);font-weight:600;">Останні пошуки</span><button onclick="clearSearchHistory()" style="font-size:11px;color:var(--red);background:none;border:none;cursor:pointer;">Очистити</button></div>';
+            h.forEach((q, i) => {
+                html += '<div style="display:flex;align-items:center;padding:6px 12px;cursor:pointer;" onclick="useSearchHist(\'' + q.replace(/'/g, "\\'") + '\')">';
+                html += '<span style="flex:1;font-size:13px;color:var(--text);">🕐 ' + q + '</span>';
+                html += '<button onclick="event.stopPropagation();removeSearchHistItem(' + i + ')" style="background:none;border:none;font-size:16px;color:#ccc;cursor:pointer;padding:0 4px;">✕</button>';
+                html += '</div>';
+            });
+            box.innerHTML = html;
+            box.style.display = 'block';
+        }
+        function hideSearchHistory() {
+            const box = document.getElementById('search-history-box');
+            if (box) box.style.display = 'none';
+        }
+        function useSearchHist(q) {
+            hideSearchHistory();
+            document.getElementById('searchInput').value = q;
+            doSearch();
+        }
+        document.getElementById('searchInput').addEventListener('focus', () => {
+            if (!document.getElementById('searchInput').value.trim()) showSearchHistory();
+        });
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.search-wrap')) hideSearchHistory();
+        });
+
+        function clearSearch() {
+            document.getElementById('searchInput').value = '';
+            isSearchMode = false;
+            lastSearchQuery = '';
+            hideSearchHistory();
+        }
+
         // --- SEARCH ---
         function doSearch() {
             const q = document.getElementById('searchInput').value.trim();
             if (!q) return;
             clearTimeout(searchTimer);
+            hideSearchHistory();
+            saveSearchToHistory(q);
             isSearchMode = true;
             lastSearchQuery = q;
             showPage('products');
@@ -1120,13 +1218,18 @@
             document.getElementById('btnBack').style.display = 'block';
             document.getElementById('headerTitle').textContent = 'Картка товару';
             document.getElementById('detail-img-wrap').innerHTML = '<div class="spinner"></div>';
+            document.getElementById('detail-breadcrumb').innerHTML = '';
             document.getElementById('detail-name').textContent = '';
             document.getElementById('detail-price').textContent = '';
             document.getElementById('detail-desc').textContent = '';
 
             try {
-                // Якщо є артикул — шукаємо по ньому (для результатів пошуку з сайту)
-                const url = sku ? SERVER_URL + '/products/sku/' + sku : SERVER_URL + '/products/' + id;
+                // Prom-товари (id ≥ 7 цифр) — прямо з Prom (швидко, фото правильне).
+                // MODX/пошук (id < 7 цифр або лише sku) — через /products/sku.
+                const isPromId = /^\d{7,}$/.test(String(id));
+                const url = isPromId
+                    ? SERVER_URL + '/products/' + id
+                    : (sku ? SERVER_URL + '/products/sku/' + sku : SERVER_URL + '/products/' + id);
                 const res = await fetch(url, { headers: H });
                 const data = await res.json();
                 const p = data.product;
@@ -1144,6 +1247,24 @@
                 }
 
                 document.getElementById('detail-name').textContent = p.name || '—';
+
+                // Хлібні крихти: шлях категорії товару (клікабельний)
+                const bc = document.getElementById('detail-breadcrumb');
+                const gid = p.group_id || (p.group && p.group.id);
+                if (gid && allGroups.length) {
+                    const path = [];
+                    let cur = allGroups.find(g => g.id === gid);
+                    while (cur) {
+                        path.unshift(cur);
+                        cur = allGroups.find(g => g.id === cur.parent_group_id);
+                    }
+                    if (path.length) {
+                        bc.innerHTML = '📁 ' + path.map(g => {
+                            const name = (g.name_multilang && g.name_multilang.uk) || g.name || '—';
+                            return '<a href="#" onclick="event.preventDefault();goToGroup(' + g.id + ',\'' + name.replace(/'/g, "\\'") + '\')" style="color:var(--teal);text-decoration:none;">' + name + '</a>';
+                        }).join(' › ');
+                    }
+                }
                 document.getElementById('detail-sku').textContent = p.sku ? 'Артикул: ' + p.sku : '';
                 document.getElementById('detail-price').innerHTML = p.price ? Math.round(parseFloat(p.price)) + ' <span>грн</span>' : '—';
 
@@ -1226,6 +1347,7 @@
         const userPhone = localStorage.getItem('ir_phone') || '';
 
         function showProfile() {
+            clearSearch();
             showPage('profile');
             setNav('nav-profile');
             document.getElementById('btnBack').style.display = 'block';
@@ -1550,6 +1672,7 @@
         }
 
         async function showFavorites() {
+            clearSearch();
             setNav('nav-fav');
             showPage('favorites');
             document.getElementById('btnBack').style.display = 'block';
@@ -1692,6 +1815,7 @@
         }
 
         async function showCart() {
+            clearSearch();
             setNav('nav-cart');
             showPage('cart');
             document.getElementById('btnBack').style.display = 'block';
@@ -2114,6 +2238,6 @@
         updateBadges();
         loadGroupsFromServer();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-E</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-F</div>
 </body>
 </html>
