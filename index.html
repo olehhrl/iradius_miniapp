@@ -1558,17 +1558,16 @@
             if (!favorites.length) { container.innerHTML = '<div class="state-box"><div class="icon">♡</div><p>Ви ще нічого не додали в обране</p></div>'; return; }
             container.innerHTML = '<div class="state-box"><div class="spinner"></div></div>';
 
-            // Точно той самий шлях, що й картка товару (там фото ПРАЦЮЄ): sku → /products/sku, інакше /products/id
+            // Через /resolve (Prom-first) — фото з images.prom.ua, яке реально працює
             const products = await Promise.all(favorites.map(async fav => {
                 try {
-                    const url = fav.sku
-                        ? SERVER_URL + '/products/sku/' + encodeURIComponent(fav.sku)
-                        : SERVER_URL + '/products/' + encodeURIComponent(fav.id);
+                    const url = SERVER_URL + '/products/resolve?id=' + encodeURIComponent(fav.id || '')
+                              + '&sku=' + encodeURIComponent(fav.sku || '')
+                              + '&name=' + encodeURIComponent(fav.name || '');
                     const d = await fetch(url, { headers: H }).then(r => r.json());
                     if (d.product) {
                         d.product.id = String(fav.id);
                         d.product.sku = fav.sku || d.product.sku || '';
-                        // оновлюємо снапшот для миттєвого показу наступного разу
                         const img = d.product.main_image || (d.product.images && d.product.images[0] && d.product.images[0].url) || '';
                         if (img) fav.image = img;
                         if (d.product.name) fav.name = d.product.name;
@@ -1577,7 +1576,6 @@
                         return d.product;
                     }
                 } catch (e) {}
-                // Фолбек зі снапшоту
                 return { id: String(fav.id), sku: fav.sku || '', name: fav.name || '—',
                          main_image: fav.image || '', price: fav.price, presence: fav.presence || 'available' };
             }));
@@ -2116,6 +2114,6 @@
         updateBadges();
         loadGroupsFromServer();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-C</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-E</div>
 </body>
 </html>
