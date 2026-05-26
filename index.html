@@ -167,6 +167,13 @@
         .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* SKELETON LOADING */
+        @keyframes shimmer { 0% { background-position: -300px 0; } 100% { background-position: 300px 0; } }
+        .skeleton-shimmer { background: linear-gradient(90deg, #eef0f2 0%, #f7f8fa 50%, #eef0f2 100%); background-size: 600px 100%; animation: shimmer 1.3s ease-in-out infinite; }
+        .product-tile.skeleton { pointer-events: none; cursor: default; }
+        .product-tile.skeleton .tile-img-wrap { background: #eef0f2; }
+        .skel-line { border-radius: 4px; }
+
         .pagination { display: flex; justify-content: center; gap: 8px; padding: 16px; }
         .pagination button { padding: 8px 18px; border: 1.5px solid var(--teal); border-radius: 20px; background: white; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--teal); }
         .pagination button:disabled { color: var(--border); border-color: var(--border); cursor: default; }
@@ -417,12 +424,38 @@
         // cart item: {id, name, price, qty}
 
         // --- IMAGE BLOB ---
+        // Persistent кеш фото через Cache API — переживає закриття Mini App.
+        // Бамп версії очищає старий кеш (можна змінити коли треба інвалідувати фото).
+        const IMG_CACHE_NAME = 'iradius-images-v1';
         async function loadImageBlob(rawUrl) {
+            if (!rawUrl) return null;
+            const key = SERVER_URL + '/image?url=' + encodeURIComponent(rawUrl);
             try {
-                const res = await fetch(SERVER_URL + '/image?url=' + encodeURIComponent(rawUrl), { headers: H });
+                if ('caches' in window) {
+                    const cache = await caches.open(IMG_CACHE_NAME);
+                    let resp = await cache.match(key);
+                    if (!resp) {
+                        resp = await fetch(key, { headers: H });
+                        if (resp && resp.ok) {
+                            try { await cache.put(key, resp.clone()); } catch (e) {}
+                        }
+                    }
+                    if (!resp || !resp.ok) return null;
+                    const blob = await resp.blob();
+                    return URL.createObjectURL(blob);
+                }
+                // Фолбек якщо Cache API недоступне
+                const res = await fetch(key, { headers: H });
                 const blob = await res.blob();
                 return URL.createObjectURL(blob);
             } catch { return null; }
+        }
+
+        // Очистити старі версії кешу (запускаємо на старті, щоб не накопичувалось)
+        if ('caches' in window) {
+            caches.keys().then(keys => keys.forEach(k => {
+                if (k.startsWith('iradius-images-') && k !== IMG_CACHE_NAME) caches.delete(k);
+            })).catch(() => {});
         }
 
         // --- PAGES ---
@@ -1281,30 +1314,34 @@
                 // Хлібні крихти: шлях категорії товару (клікабельний)
                 const bc = document.getElementById('detail-breadcrumb');
                 bc.innerHTML = '';
-                // 1) Якщо є groupStack (відкрито з каталогу) — показуємо його
-                if (groupStack.length) {
+                // Чи відкрито картку з пошуку? Якщо так — groupStack залишковий від попередньої
+                // категорії й не стосується цього товару. Будуємо з p.group_id (Prom-правда).
+                const openedFromSearch = (detailReturnPage === 'products') || isSearchMode || !!lastSearchQuery;
+
+                // 1) ЗАВЖДИ якщо є group_id з Prom — будуємо шлях з allGroups (найточніше)
+                const gid = p.group_id || (p.group && p.group.id);
+                if (gid && allGroups.length) {
+                    const path = [];
+                    let cur = allGroups.find(g => g.id === gid);
+                    while (cur) {
+                        path.unshift(cur);
+                        cur = allGroups.find(g => g.id === cur.parent_group_id);
+                    }
+                    if (path.length) {
+                        bc.innerHTML = '📁 ' + path.map(g => {
+                            const name = (g.name_multilang && g.name_multilang.uk) || g.name || '—';
+                            return '<a href="#" onclick="event.preventDefault();goToGroup(' + g.id + ',\'' + name.replace(/'/g, "\\'") + '\')" style="color:var(--teal);text-decoration:none;">' + name + '</a>';
+                        }).join(' › ');
+                    }
+                }
+                // 2) Якщо group_id невідомий — fallback на groupStack (тільки коли НЕ з пошуку,
+                // бо інакше підставимо чужу категорію, де користувач був раніше)
+                if (!bc.innerHTML && !openedFromSearch && groupStack.length) {
                     bc.innerHTML = '📁 ' + groupStack.map(g =>
                         '<a href="#" onclick="event.preventDefault();goToGroup(' + g.id + ',\'' + g.name.replace(/'/g, "\\'") + '\')" style="color:var(--teal);text-decoration:none;">' + g.name + '</a>'
                     ).join(' › ');
-                // 2) Якщо є group_id з Prom — будуємо шлях з allGroups
-                } else {
-                    const gid = p.group_id || (p.group && p.group.id);
-                    if (gid && allGroups.length) {
-                        const path = [];
-                        let cur = allGroups.find(g => g.id === gid);
-                        while (cur) {
-                            path.unshift(cur);
-                            cur = allGroups.find(g => g.id === cur.parent_group_id);
-                        }
-                        if (path.length) {
-                            bc.innerHTML = '📁 ' + path.map(g => {
-                                const name = (g.name_multilang && g.name_multilang.uk) || g.name || '—';
-                                return '<a href="#" onclick="event.preventDefault();goToGroup(' + g.id + ',\'' + name.replace(/'/g, "\\'") + '\')" style="color:var(--teal);text-decoration:none;">' + name + '</a>';
-                            }).join(' › ');
-                        }
-                    }
                 }
-                // 3) Якщо пошук — показуємо контекст пошуку
+                // 3) Якщо все одно нічого — показуємо контекст пошуку (якщо є)
                 if (!bc.innerHTML && lastSearchQuery) {
                     bc.innerHTML = '🔍 Знайдено через пошук: <b>' + lastSearchQuery + '</b>';
                 }
@@ -2275,7 +2312,21 @@
         function hidePagination() { document.getElementById('pagination').style.display = 'none'; }
 
         function showLoading() {
-            document.getElementById('products-container').innerHTML = '<div class="state-box"><div class="spinner"></div><p>Завантаження...</p></div>';
+            // Скелетон-плитки замість тексту "Завантаження..." — користувач одразу
+            // бачить майбутню структуру каталогу.
+            const tile = '<div class="product-tile skeleton">'
+                       +   '<div class="tile-img-wrap skeleton-shimmer"></div>'
+                       +   '<div class="tile-body">'
+                       +     '<div class="skel-line skeleton-shimmer" style="width:92%;height:11px;margin-bottom:6px;"></div>'
+                       +     '<div class="skel-line skeleton-shimmer" style="width:60%;height:10px;margin-bottom:10px;"></div>'
+                       +     '<div style="display:flex;justify-content:space-between;align-items:center;">'
+                       +       '<div class="skel-line skeleton-shimmer" style="width:45%;height:14px;"></div>'
+                       +       '<div class="skel-line skeleton-shimmer" style="width:26px;height:26px;border-radius:50%;"></div>'
+                       +     '</div>'
+                       +   '</div>'
+                       + '</div>';
+            const grid = '<div class="products-grid">' + tile.repeat(6) + '</div>';
+            document.getElementById('products-container').innerHTML = grid;
         }
         function showEmpty(msg) {
             document.getElementById('products-container').innerHTML = '<div class="state-box"><div class="icon">🔍</div><p>' + msg + '</p></div>';
@@ -2295,6 +2346,6 @@
         updateBadges();
         loadGroupsFromServer();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-L</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-M</div>
 </body>
 </html>
