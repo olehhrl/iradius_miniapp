@@ -427,6 +427,21 @@
         // Persistent кеш фото через Cache API — переживає закриття Mini App.
         // Бамп версії очищає старий кеш (можна змінити коли треба інвалідувати фото).
         const IMG_CACHE_NAME = 'iradius-images-v1';
+
+        // Прогрів фото у фоні — кладе у Cache API, нічого не повертає.
+        // Викликаємо при додаванні в обране, щоб у момент переходу в "Обране"
+        // фото вже було готове.
+        async function prewarmImage(rawUrl) {
+            if (!rawUrl || !('caches' in window)) return;
+            const key = SERVER_URL + '/image?url=' + encodeURIComponent(rawUrl);
+            try {
+                const cache = await caches.open(IMG_CACHE_NAME);
+                if (await cache.match(key)) return;
+                const resp = await fetch(key, { headers: H });
+                if (resp && resp.ok) await cache.put(key, resp);
+            } catch (e) {}
+        }
+
         async function loadImageBlob(rawUrl) {
             if (!rawUrl) return null;
             const key = SERVER_URL + '/image?url=' + encodeURIComponent(rawUrl);
@@ -676,18 +691,65 @@
         }
 
         // Завантажує товари категорії в контейнер на page-main (після підкатегорій)
+        // In-memory кеш товарів кореня категорії — миттєвий повторний захід у ту ж категорію.
+        // Живе на час відкритого Mini App (закриття чистить).
+        const rootProductsCache = {};
+
+        function rootSkeletonHTML(count) {
+            const tile = '<div class="product-tile skeleton">'
+                       +   '<div class="tile-img-wrap skeleton-shimmer"></div>'
+                       +   '<div class="tile-body">'
+                       +     '<div class="skel-line skeleton-shimmer" style="width:90%;height:11px;margin-bottom:6px;"></div>'
+                       +     '<div class="skel-line skeleton-shimmer" style="width:55%;height:10px;margin-bottom:10px;"></div>'
+                       +     '<div style="display:flex;justify-content:space-between;align-items:center;">'
+                       +       '<div class="skel-line skeleton-shimmer" style="width:42%;height:14px;"></div>'
+                       +       '<div class="skel-line skeleton-shimmer" style="width:26px;height:26px;border-radius:50%;"></div>'
+                       +     '</div>'
+                       +   '</div>'
+                       + '</div>';
+            return '<div class="products-grid">' + tile.repeat(count) + '</div>';
+        }
+
         async function loadRootProducts(groupId) {
             const wrap = document.getElementById('root-products-wrap');
             const container = document.getElementById('root-products-container');
             if (!wrap) return;
-            wrap.style.display = 'none';
-            container.innerHTML = '<div class="state-box"><div class="spinner"></div></div>';
+
+            // 1) Якщо в кеші — рендеримо МИТТЄВО, без спінера/скелетона.
+            //    Паралельно у фоні оновлюємо з сервера (актуальна наявність/ціна).
+            const cached = rootProductsCache[groupId];
+            if (cached) {
+                if (!cached.length) { wrap.style.display = 'none'; }
+                else {
+                    wrap.style.display = 'block';
+                    renderProducts(cached, 'root-products-container', false);
+                }
+                // Тиха ревалідація
+                fetch(SERVER_URL + '/products?group_id=' + groupId + '&limit=100', { headers: H })
+                    .then(r => r.json()).then(data => {
+                        const fresh = data.products || [];
+                        rootProductsCache[groupId] = fresh;
+                        // Перерендеримо тільки якщо ми досі в цій же категорії
+                        if (currentGroupId === groupId) {
+                            if (!fresh.length) { wrap.style.display = 'none'; return; }
+                            wrap.style.display = 'block';
+                            renderProducts(fresh, 'root-products-container', false);
+                        }
+                    }).catch(() => {});
+                return;
+            }
+
+            // 2) Першого разу — одразу показуємо скелетон (видно майбутню сітку).
+            wrap.style.display = 'block';
+            container.innerHTML = rootSkeletonHTML(4);
+
             try {
                 const res = await fetch(SERVER_URL + '/products?group_id=' + groupId + '&limit=100', { headers: H });
                 const data = await res.json();
                 const products = (data.products || []);
+                rootProductsCache[groupId] = products;
+                if (currentGroupId !== groupId) return; // користувач уже вийшов з категорії
                 if (!products.length) { wrap.style.display = 'none'; return; }
-                wrap.style.display = 'block';
                 await renderProducts(products, 'root-products-container', false);
             } catch (e) {
                 wrap.style.display = 'none';
@@ -1395,6 +1457,8 @@
                 if (btn) { btn.innerHTML = heartSVG(true); btn.classList.add('active'); }
                 showToast('Додано в обране');
                 haptic('light');
+                // Прогрів фото в кеш — щоб при переході в "Обране" воно вже було готове
+                if (image) prewarmImage(image);
             } else {
                 favorites.splice(idx, 1);
                 if (btn) { btn.innerHTML = heartSVG(false); btn.classList.remove('active'); }
@@ -2346,6 +2410,6 @@
         updateBadges();
         loadGroupsFromServer();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-M</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-N</div>
 </body>
 </html>
