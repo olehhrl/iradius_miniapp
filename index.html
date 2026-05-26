@@ -573,11 +573,11 @@
             for (const g of groups) {
                 const name = (g.name_multilang && g.name_multilang.uk) || g.name || '—';
                 const hasChildren = allGroups.some(c => c.parent_group_id === g.id);
-                const imgUrl = g.image ? SERVER_URL + '/image?url=' + encodeURIComponent(g.image) : '';
                 html += '<div class="category-card" onclick="openGroup(' + g.id + ', \'' + name.replace(/'/g, "\\'") + '\', ' + hasChildren + ')" id="cat-' + g.id + '">';
                 html += '<div class="category-img-wrap">';
-                if (imgUrl) html += '<img class="category-img" src="' + imgUrl + '" onerror="this.style.display=\'none\'">';
-                else html += '<div class="category-img-placeholder">📦</div>';
+                // Прямий <img src> на ngrok не вантажиться в Telegram WebView на телефоні
+                // (без ngrok-skip-browser-warning header → 403/HTML). Через blob — як в товарах.
+                html += '<div class="category-img-placeholder" id="catimg-' + g.id + '">📦</div>';
                 html += '</div>';
                 html += '<div class="category-label"><div class="name">' + name + '</div>';
                 if (hasChildren) html += '<div class="arrow">▶ підкатегорії</div>';
@@ -585,6 +585,16 @@
             }
             // БЕЗ папки «Всі товари» — товари завантажуються одразу в openGroup
             grid.innerHTML = html;
+            // Фото категорій — через blob (fetch з ngrok-skip-заголовком). Паралельно.
+            groups.forEach(g => { if (g.image) loadCategoryImage(g); });
+        }
+
+        async function loadCategoryImage(g) {
+            const blobUrl = await loadImageBlob(g.image);
+            const el = document.getElementById('catimg-' + g.id);
+            if (blobUrl && el && el.tagName !== 'IMG') {
+                el.outerHTML = '<img class="category-img" id="catimg-' + g.id + '" src="' + blobUrl + '">';
+            }
         }
 
         // Перехід у конкретну категорію (з breadcrumb на картці товару)
@@ -1712,36 +1722,50 @@
             document.getElementById('headerTitle').textContent = '❤️ Обране';
             const container = document.getElementById('favorites-container');
             if (!favorites.length) { container.innerHTML = '<div class="state-box"><div class="icon">♡</div><p>Ви ще нічого не додали в обране</p></div>'; return; }
-            container.innerHTML = '<div class="state-box"><div class="spinner"></div></div>';
 
-            // Через /resolve (Prom-first) — фото з images.prom.ua, яке реально працює
-            const products = await Promise.all(favorites.map(async fav => {
+            // ОПТИМІСТИЧНИЙ РЕНДЕР: малюємо плитки одразу з даних favorites (фото вже збережене
+            // в toggleFavTile). loadTileImage стартує паралельно з рендером — фото зʼявляються
+            // швидко, без чекання на всі resolve-запити. /resolve викликаємо у фоні
+            // для актуалізації наявності/ціни/фото.
+            const initial = favorites.map(fav => ({
+                id: String(fav.id),
+                sku: fav.sku || '',
+                name: fav.name || '—',
+                main_image: fav.image || '',
+                price: fav.price,
+                presence: fav.presence || 'available'
+            }));
+            inFavoritesView = true;
+            await renderProducts(initial, 'favorites-container');
+            inFavoritesView = false;
+            const clearBtn = '<div style="padding:10px 14px 0;"><button onclick="clearFavorites()" style="width:100%;padding:11px;background:white;border:1.5px solid var(--border);border-radius:12px;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;">🗑 Очистити обране</button></div>';
+            container.insertAdjacentHTML('afterbegin', clearBtn);
+
+            // Фоном: освіжаємо актуальні дані через /resolve. Якщо щось змінилось — оновлюємо
+            // плитку (наявність, ціна, або фото яке досі не вантажилось).
+            favorites.forEach(async fav => {
                 try {
                     const url = SERVER_URL + '/products/resolve?id=' + encodeURIComponent(fav.id || '')
                               + '&sku=' + encodeURIComponent(fav.sku || '')
                               + '&name=' + encodeURIComponent(fav.name || '');
                     const d = await fetch(url, { headers: H }).then(r => r.json());
-                    if (d.product) {
-                        d.product.id = String(fav.id);
-                        d.product.sku = fav.sku || d.product.sku || '';
-                        const img = d.product.main_image || (d.product.images && d.product.images[0] && d.product.images[0].url) || '';
-                        if (img) fav.image = img;
-                        if (d.product.name) fav.name = d.product.name;
-                        if (d.product.price != null) fav.price = Math.round(parseFloat(d.product.price));
-                        fav.presence = d.product.presence || fav.presence || 'available';
-                        return d.product;
+                    if (!d.product) return;
+                    const p = d.product;
+                    const newImg = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
+                    if (newImg && newImg !== fav.image) {
+                        fav.image = newImg;
+                        // Якщо фото ще не зʼявилось у плитці — підвантажуємо
+                        const imgEl = document.getElementById('img-' + fav.id);
+                        if (imgEl && imgEl.tagName !== 'IMG') {
+                            loadTileImage({ id: fav.id, main_image: newImg });
+                        }
                     }
+                    if (p.name) fav.name = p.name;
+                    if (p.price != null) fav.price = Math.round(parseFloat(p.price));
+                    if (p.presence) fav.presence = p.presence;
                 } catch (e) {}
-                return { id: String(fav.id), sku: fav.sku || '', name: fav.name || '—',
-                         main_image: fav.image || '', price: fav.price, presence: fav.presence || 'available' };
-            }));
+            });
             localStorage.setItem('ir_favorites', JSON.stringify(favorites));
-
-            inFavoritesView = true;
-            await renderProducts(products, 'favorites-container');
-            inFavoritesView = false;
-            const clearBtn = '<div style="padding:10px 14px 0;"><button onclick="clearFavorites()" style="width:100%;padding:11px;background:white;border:1.5px solid var(--border);border-radius:12px;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;">🗑 Очистити обране</button></div>';
-            container.insertAdjacentHTML('afterbegin', clearBtn);
         }
 
         // --- CART ---
@@ -2271,6 +2295,6 @@
         updateBadges();
         loadGroupsFromServer();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-K</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-L</div>
 </body>
 </html>
