@@ -24,8 +24,9 @@
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
         .header { background: var(--teal); color: white; display: flex; flex-direction: column; position: sticky; top: 0; z-index: 200; }
-        .header-title { font-size: 15px; font-weight: 700; text-align: center; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .header-back { background: none; border: none; color: white; font-size: 22px; cursor: pointer; display: none; line-height: 1; padding: 0 4px; flex-shrink: 0; }
+        .header-row { display: flex; align-items: center; padding: 0 10px; min-height: 80px; }
+        .header-title { font-size: 19px; font-weight: 700; text-align: center; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .header-back { background: none; border: none; color: white; font-size: 30px; cursor: pointer; display: none; line-height: 1; padding: 0 6px; flex-shrink: 0; }
 
         .search-wrap { padding: 0 12px 8px; display: flex; position: relative; }
         .search-wrap input { flex: 1; width: 100%; padding: 8px 14px; border: none; border-radius: 18px; font-size: 13px; background: rgba(255,255,255,.9); outline: none; }
@@ -206,7 +207,7 @@
 </head>
 <body>
     <div class="header">
-        <div style="display:flex;align-items:center;padding:0 10px;">
+        <div class="header-row">
             <button class="header-back" id="btnBack" onclick="goBack()">←</button>
             <div class="header-title" id="headerTitle">🦷 IRadius Dental Shop</div>
         </div>
@@ -1457,8 +1458,28 @@
                 if (btn) { btn.innerHTML = heartSVG(true); btn.classList.add('active'); }
                 showToast('Додано в обране');
                 haptic('light');
-                // Прогрів фото в кеш — щоб при переході в "Обране" воно вже було готове
+                // Прогрів фото в кеш — щоб при переході в "Обране" воно вже було готове.
+                // Спершу те, що є (raw image). Паралельно — resolve, бо MODX-фото може
+                // бути 404; resolve поверне надійне Prom-фото за артикулом.
                 if (image) prewarmImage(image);
+                (async () => {
+                    try {
+                        const url = SERVER_URL + '/products/resolve?id=' + encodeURIComponent(id || '')
+                                  + '&sku=' + encodeURIComponent(sku || '')
+                                  + '&name=' + encodeURIComponent(name || '');
+                        const d = await fetch(url, { headers: H }).then(r => r.json());
+                        const newImg = d.product && (d.product.main_image
+                            || (d.product.images && d.product.images[0] && d.product.images[0].url));
+                        if (newImg) {
+                            const fav = favorites.find(f => String(f.id) === String(id));
+                            if (fav && fav.image !== newImg) {
+                                fav.image = newImg;
+                                localStorage.setItem('ir_favorites', JSON.stringify(favorites));
+                            }
+                            prewarmImage(newImg);
+                        }
+                    } catch (e) {}
+                })();
             } else {
                 favorites.splice(idx, 1);
                 if (btn) { btn.innerHTML = heartSVG(false); btn.classList.remove('active'); }
@@ -2410,6 +2431,6 @@
         updateBadges();
         loadGroupsFromServer();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-N</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-O</div>
 </body>
 </html>
