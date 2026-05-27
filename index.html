@@ -1418,35 +1418,21 @@
                 bc.innerHTML = '';
                 const openedFromSearch = (detailReturnPage === 'products') || isSearchMode || !!lastSearchQuery;
 
-                // Хелпер: для назви категорії з MODX знайти відповідну Prom group.
-                // 1) Точний збіг нормалізованих назв
-                // 2) Substring (одна назва містить іншу) — бо «Композитні матеріали» в MODX може
-                //    бути «Композитні матеріали стоматологічні» в Prom
-                const norm = s => String(s || '').toLowerCase().replace(/[\s\-_’'`«»()]/g, '').trim();
-                function linkOrText(nm) {
-                    if (allGroups.length) {
-                        const target = norm(nm);
-                        const candidates = allGroups.map(g => {
-                            const gn = (g.name_multilang && g.name_multilang.uk) || g.name || '';
-                            return { g, gn, n: norm(gn) };
-                        });
-                        // 1) Exact match
-                        let hit = candidates.find(c => c.n === target);
-                        // 2) Substring fallback (працює мінімум 4 символи, щоб не зачепити сміття)
-                        if (!hit && target.length >= 4) {
-                            hit = candidates.find(c => c.n.includes(target) || target.includes(c.n));
-                        }
-                        if (hit) {
-                            return '<a href="#" onclick="event.preventDefault();goToGroup(' + hit.g.id + ',\'' + hit.gn.replace(/'/g, "\\'") + '\')" style="color:var(--teal);text-decoration:none;">' + hit.gn + '</a>';
-                        }
+                // Тепер бекенд віддає category_path_ids (реальні MODX-id категорій,
+                // які збігаються з allGroups). Не потрібно нічого вгадувати —
+                // лінк гарантовано клікабельний.
+                function linkByIdName(nm, cid) {
+                    const safe = String(nm || '').replace(/'/g, "\\'");
+                    if (cid) {
+                        return '<a href="#" onclick="event.preventDefault();goToGroup(' + cid + ',\'' + safe + '\')" style="color:var(--teal);text-decoration:none;">' + nm + '</a>';
                     }
                     return '<span>' + nm + '</span>';
                 }
 
-                // 1) MODX category_path — справжній шлях категорії з iradius.com.ua
-                //    (точно як на живому сайті). Найвища пріоритетність.
+                // 1) MODX category_path + category_path_ids — найточніший варіант
                 if (Array.isArray(p.category_path) && p.category_path.length) {
-                    bc.innerHTML = '📁 ' + p.category_path.map(linkOrText).join(' › ');
+                    const ids = Array.isArray(p.category_path_ids) ? p.category_path_ids : [];
+                    bc.innerHTML = '📁 ' + p.category_path.map((nm, i) => linkByIdName(nm, ids[i])).join(' › ');
                 }
                 // 2) Prom group_id — fallback (для товарів які знайдені на Prom за точним sku)
                 if (!bc.innerHTML) {
@@ -2753,6 +2739,6 @@
             }
         })();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-U</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-V (MODX)</div>
 </body>
 </html>
