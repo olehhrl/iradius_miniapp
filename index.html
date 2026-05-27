@@ -279,6 +279,11 @@
         <div id="favorites-container"></div>
     </div>
 
+    <!-- POPULAR -->
+    <div id="page-popular" style="display:none;padding-bottom:70px;">
+        <div id="popular-container"></div>
+    </div>
+
     <!-- CART -->
     <div id="page-cart">
         <div id="cart-items-wrap"></div>
@@ -313,6 +318,7 @@
 
     <div class="bottom-nav">
         <div class="nav-item active" id="nav-catalog" onclick="goHome()"><span class="nav-icon">🏠</span>Каталог</div>
+        <div class="nav-item" id="nav-popular" onclick="showPopular()"><span class="nav-icon">🔥</span>Популярне</div>
         <div class="nav-item" id="nav-fav" onclick="showFavorites()"><span class="nav-icon">♡</span>Обране<span class="nav-badge" id="badge-fav"></span></div>
         <div class="nav-item" id="nav-cart" onclick="showCart()"><span class="nav-icon">🛒</span>Кошик<span class="nav-badge" id="badge-cart"></span></div>
         <div class="nav-item" id="nav-profile" onclick="showProfile()"><span class="nav-icon">👤</span>Кабінет</div>
@@ -480,7 +486,7 @@
         }
 
         // --- PAGES ---
-        const pages = ['page-main','page-products','page-detail','page-favorites','page-cart','page-profile'];
+        const pages = ['page-main','page-products','page-detail','page-popular','page-favorites','page-cart','page-profile'];
         function showPage(name) {
             pages.forEach(id => document.getElementById(id).style.display = 'none');
             document.getElementById('page-' + name).style.display = 'block';
@@ -490,7 +496,7 @@
         }
 
         function setNav(active) {
-            ['nav-catalog','nav-fav','nav-cart','nav-profile'].forEach(id => document.getElementById(id).classList.remove('active'));
+            ['nav-catalog','nav-popular','nav-fav','nav-cart','nav-profile'].forEach(id => document.getElementById(id).classList.remove('active'));
             document.getElementById(active).classList.add('active');
         }
 
@@ -1872,6 +1878,56 @@
             haptic('medium');
         }
 
+        // In-memory кеш популярних — миттєвий повторний захід у вкладку
+        let popularCache = null;
+
+        async function showPopular() {
+            clearSearch();
+            setNav('nav-popular');
+            showPage('popular');
+            document.getElementById('btnBack').style.display = 'none';
+            document.getElementById('headerTitle').textContent = '🔥 Популярне';
+            const container = document.getElementById('popular-container');
+
+            // Якщо вже завантажували — рендеримо одразу з кешу, у фоні ревалідуємо
+            if (popularCache) {
+                await renderProducts(popularCache, 'popular-container');
+                fetch(SERVER_URL + '/products/popular', { headers: H })
+                    .then(r => r.json())
+                    .then(d => { if (d.products) popularCache = d.products; })
+                    .catch(() => {});
+                return;
+            }
+
+            // Скелетон поки чекаємо
+            const tile = '<div class="product-tile skeleton">'
+                       +   '<div class="tile-img-wrap skeleton-shimmer"></div>'
+                       +   '<div class="tile-body">'
+                       +     '<div class="skel-line skeleton-shimmer" style="width:90%;height:11px;margin-bottom:6px;"></div>'
+                       +     '<div class="skel-line skeleton-shimmer" style="width:55%;height:10px;margin-bottom:10px;"></div>'
+                       +     '<div style="display:flex;justify-content:space-between;align-items:center;">'
+                       +       '<div class="skel-line skeleton-shimmer" style="width:42%;height:14px;"></div>'
+                       +       '<div class="skel-line skeleton-shimmer" style="width:26px;height:26px;border-radius:50%;"></div>'
+                       +     '</div>'
+                       +   '</div>'
+                       + '</div>';
+            container.innerHTML = '<div class="products-grid">' + tile.repeat(6) + '</div>';
+
+            try {
+                const res = await fetch(SERVER_URL + '/products/popular', { headers: H });
+                const d = await res.json();
+                const products = d.products || [];
+                popularCache = products;
+                if (!products.length) {
+                    container.innerHTML = '<div class="state-box"><div class="icon">🔥</div><p>Зараз нічого з популярного немає в наявності</p></div>';
+                    return;
+                }
+                await renderProducts(products, 'popular-container');
+            } catch (e) {
+                container.innerHTML = '<div class="state-box"><div class="icon">⚠️</div><p>Не вдалося завантажити</p></div>';
+            }
+        }
+
         async function showFavorites() {
             clearSearch();
             setNav('nav-fav');
@@ -2494,6 +2550,6 @@
             }
         })();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-R2</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-S</div>
 </body>
 </html>
