@@ -26,7 +26,10 @@
         .header { background: var(--teal); color: white; display: flex; flex-direction: column; position: sticky; top: 0; z-index: 200; }
         .header-row { display: flex; align-items: center; padding: 0 10px; min-height: 80px; }
         .header-title { font-size: 19px; font-weight: 700; text-align: center; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .header-back { background: none; border: none; color: white; font-size: 30px; cursor: pointer; display: none; line-height: 1; padding: 0 6px; flex-shrink: 0; }
+        .header-back { background: none; border: none; color: white; font-size: 30px; cursor: pointer; display: none; line-height: 1; padding: 0 6px; flex-shrink: 0; width: 42px; text-align: left; }
+        /* Невидимий spacer тієї ж ширини, що й кнопка back — щоб title був по центру екрана,
+           а не по центру простору справа від back. */
+        .header-spacer { width: 42px; flex-shrink: 0; }
 
         .search-wrap { padding: 0 12px 8px; display: flex; position: relative; }
         .search-wrap input { flex: 1; width: 100%; padding: 8px 14px; border: none; border-radius: 18px; font-size: 13px; background: rgba(255,255,255,.9); outline: none; }
@@ -180,11 +183,12 @@
         .pagination button:disabled { color: var(--border); border-color: var(--border); cursor: default; }
         #pageInfo { align-self: center; font-size: 13px; color: var(--text-muted); }
 
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--white); border-top: 1px solid var(--border); display: flex; padding: 6px 0 4px; z-index: 150; }
-        .nav-item { flex: 1; text-align: center; padding: 4px; cursor: pointer; color: var(--text-muted); font-size: 10px; font-weight: 500; position: relative; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--white); border-top: 1px solid var(--border); display: flex; padding: 6px 0 4px; padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px)); z-index: 150; }
+        /* Явно центруємо вміст по колонкам — інакше badge/іконки можуть зсувати текст */
+        .nav-item { flex: 1; padding: 4px; cursor: pointer; color: var(--text-muted); font-size: 10px; font-weight: 500; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
         .nav-item.active { color: var(--teal); }
-        .nav-item .nav-icon { font-size: 20px; display: block; margin-bottom: 2px; }
-        .nav-badge { position: absolute; top: 0; right: calc(50% - 18px); background: var(--red); color: white; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 10px; min-width: 16px; text-align: center; display: none; }
+        .nav-item .nav-icon { font-size: 20px; display: block; margin-bottom: 2px; line-height: 1; }
+        .nav-badge { position: absolute; top: 0; left: calc(50% + 4px); background: var(--red); color: white; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 10px; min-width: 16px; text-align: center; display: none; line-height: 1.3; }
         .nav-badge.show { display: block; }
 
 
@@ -210,6 +214,7 @@
         <div class="header-row">
             <button class="header-back" id="btnBack" onclick="goBack()">←</button>
             <div class="header-title" id="headerTitle">🦷 IRadius Dental Shop</div>
+            <div class="header-spacer"></div>
         </div>
         <div class="search-wrap" id="searchWrap">
             <input type="text" id="searchInput" placeholder="🔍 Пошук товарів...">
@@ -1592,9 +1597,9 @@
                     <div style="font-size:13px;font-weight:700;margin-bottom:8px;">📦 Остання посилка</div>
                     <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px;">ТТН: <b style="color:var(--text);">${ttn}</b></div>
                     <div id="track-result"><div class="spinner" style="margin:6px auto;"></div></div>
-                    <div style="display:flex;gap:8px;margin-top:10px;">
+                    <div id="track-actions" style="display:flex;gap:8px;margin-top:10px;">
                         <button onclick="copyTtn('${ttn}',this)" style="flex:1;padding:9px;background:var(--teal);border:none;border-radius:10px;font-size:12px;font-weight:600;color:white;cursor:pointer;">📋 Копіювати ТТН</button>
-                        <button onclick="openNpTracking('${ttn}')" style="flex:1;padding:9px;background:white;border:1.5px solid var(--teal);border-radius:10px;font-size:12px;font-weight:600;color:var(--teal-dark);cursor:pointer;">Сайт НП →</button>
+                        <button onclick="openNpTracking('${ttn}')" style="flex:1;padding:9px;background:white;border:1.5px solid var(--teal);border-radius:10px;font-size:12px;font-weight:600;color:var(--teal-dark);cursor:pointer;">📦 Відкрити в НП</button>
                     </div>
                 </div>`;
             }
@@ -1671,7 +1676,11 @@
                     '&phone=' + encodeURIComponent(userPhone || ''), { headers: H });
                 const d = await res.json();
                 if (!d.status) {
+                    // ТТН видалена/недійсна — ховаємо весь блок (статус + кнопки),
+                    // щоб не дражнити порожніми кнопками.
                     box.innerHTML = '<div style="font-size:12px;color:var(--text-muted);">' + (d.error || 'Статус недоступний') + '</div>';
+                    const actions = document.getElementById('track-actions');
+                    if (actions) actions.style.display = 'none';
                     return;
                 }
                 // Код статусу 9 = прибула у відділення, 10/11 = отримано
@@ -2471,8 +2480,16 @@
 
         // --- INIT ---
         updateBadges();
-        loadGroupsFromServer();
+        (async () => {
+            await loadGroupsFromServer();
+            // Deep-link: ?p=PRODUCT_ID — відкриваємо картку товару одразу.
+            // Використовується у сповіщенні «✅ товар у наявності» (кнопка в Telegram).
+            const startProductId = new URLSearchParams(window.location.search).get('p');
+            if (startProductId) {
+                try { openDetail(startProductId, ''); } catch (e) {}
+            }
+        })();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-Q</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-R</div>
 </body>
 </html>
