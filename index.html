@@ -1675,10 +1675,14 @@
                 const res = await fetch(SERVER_URL + '/np/track?ttn=' + encodeURIComponent(ttn) +
                     '&phone=' + encodeURIComponent(userPhone || ''), { headers: H });
                 const d = await res.json();
-                if (!d.status) {
-                    // ТТН видалена/недійсна — ховаємо весь блок (статус + кнопки),
-                    // щоб не дражнити порожніми кнопками.
-                    box.innerHTML = '<div style="font-size:12px;color:var(--text-muted);">' + (d.error || 'Статус недоступний') + '</div>';
+                // ТТН недоступна або видалена (НП повертає status="Видалено" як справжній статус).
+                // Ховаємо повідомлення про статус і кнопки — користувачу нема куди клікати.
+                const sLower = String(d.status || '').toLowerCase();
+                const deletedHints = ['видален', 'не знайден', 'не існ', 'недійсн', 'no track', 'not found'];
+                const isUnavailable = !d.status || deletedHints.some(h => sLower.includes(h));
+                if (isUnavailable) {
+                    box.innerHTML = '<div style="font-size:12px;color:var(--text-muted);">' +
+                        (d.status || d.error || 'ТТН не знайдено') + '</div>';
                     const actions = document.getElementById('track-actions');
                     if (actions) actions.style.display = 'none';
                     return;
@@ -2490,6 +2494,6 @@
             }
         })();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-R</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-R2</div>
 </body>
 </html>
