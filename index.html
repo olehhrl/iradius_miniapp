@@ -178,6 +178,16 @@
         .product-tile.skeleton .tile-img-wrap { background: #eef0f2; }
         .skel-line { border-radius: 4px; }
 
+        /* SIMILAR PRODUCTS (на картці товару) */
+        .similar-strip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 8px; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+        .similar-strip::-webkit-scrollbar { height: 4px; }
+        .similar-strip::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+        .similar-card { flex: 0 0 110px; background: white; border: 1.5px solid var(--border); border-radius: 10px; padding: 6px; cursor: pointer; display: flex; flex-direction: column; }
+        .similar-card .similar-img-wrap { width: 100%; aspect-ratio: 1; background: var(--bg); border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 5px; }
+        .similar-card img { width: 100%; height: 100%; object-fit: contain; }
+        .similar-card .similar-name { font-size: 10px; line-height: 1.2; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 24px; }
+        .similar-card .similar-price { font-size: 12px; font-weight: 700; color: var(--teal); margin-top: 3px; }
+
         /* DELIVERY TABS (форма оформлення) */
         .delivery-tabs { display: flex; gap: 6px; margin: 6px 0 10px; }
         .delivery-tab { flex: 1; padding: 10px 6px; background: white; border: 1.5px solid var(--border); border-radius: 12px; font-size: 12px; font-weight: 600; color: var(--text-muted); text-align: center; cursor: pointer; transition: all 0.15s; }
@@ -267,12 +277,20 @@
             <div class="detail-price-row">
                 <div class="detail-price" id="detail-price"></div>
                 <div style="display:flex;align-items:center;gap:8px">
+                    <button class="btn-fav-detail" id="btnShareDetail" onclick="shareProduct()" title="Поділитись" style="background:white;border:1.5px solid var(--border);border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--teal-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                    </button>
                     <button class="btn-fav-detail" id="btnFavDetail" onclick="toggleFavorite()"><svg class="heart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
                     <div class="detail-presence-badge" id="detail-presence"></div>
                 </div>
             </div>
             <div class="detail-desc-title" id="detail-desc-title" style="display:none;">Опис</div>
             <div class="detail-desc" id="detail-desc"></div>
+            <!-- Схожі товари — компактна горизонтальна стрічка під описом -->
+            <div id="detail-similar-wrap" style="display:none;margin-top:18px;">
+                <div style="font-size:13px;font-weight:700;color:var(--teal-dark);margin-bottom:8px;">З цим також купують</div>
+                <div id="detail-similar" class="similar-strip"></div>
+            </div>
         </div>
         <div class="detail-actions">
             <button class="btn-cart-detail" style="width:100%" onclick="addToCart()">🛒 Додати в кошик</button>
@@ -1364,6 +1382,11 @@
             document.getElementById('detail-name').textContent = '';
             document.getElementById('detail-price').textContent = '';
             document.getElementById('detail-desc').textContent = '';
+            // Ховаємо схожі від попереднього товару (асинхронно догрузяться)
+            const simWrap = document.getElementById('detail-similar-wrap');
+            if (simWrap) simWrap.style.display = 'none';
+            const simBox = document.getElementById('detail-similar');
+            if (simBox) simBox.innerHTML = '';
 
             try {
                 // Prom-товари (id ≥ 7 цифр) — прямо з Prom (швидко, фото правильне).
@@ -1395,20 +1418,26 @@
                 bc.innerHTML = '';
                 const openedFromSearch = (detailReturnPage === 'products') || isSearchMode || !!lastSearchQuery;
 
-                // Хелпер: для назви категорії з MODX знайти відповідну Prom group (за нормалізованою
-                // назвою). Якщо знайшли — клікабельний лінк; інакше простий текст.
-                const norm = s => String(s || '').toLowerCase().replace(/[\s\-_’'`«»]/g, '').trim();
+                // Хелпер: для назви категорії з MODX знайти відповідну Prom group.
+                // 1) Точний збіг нормалізованих назв
+                // 2) Substring (одна назва містить іншу) — бо «Композитні матеріали» в MODX може
+                //    бути «Композитні матеріали стоматологічні» в Prom
+                const norm = s => String(s || '').toLowerCase().replace(/[\s\-_’'`«»()]/g, '').trim();
                 function linkOrText(nm) {
-                    const safe = String(nm || '').replace(/'/g, "\\'");
                     if (allGroups.length) {
                         const target = norm(nm);
-                        const g = allGroups.find(g => {
+                        const candidates = allGroups.map(g => {
                             const gn = (g.name_multilang && g.name_multilang.uk) || g.name || '';
-                            return norm(gn) === target;
+                            return { g, gn, n: norm(gn) };
                         });
-                        if (g) {
-                            const gn = (g.name_multilang && g.name_multilang.uk) || g.name || nm;
-                            return '<a href="#" onclick="event.preventDefault();goToGroup(' + g.id + ',\'' + gn.replace(/'/g, "\\'") + '\')" style="color:var(--teal);text-decoration:none;">' + gn + '</a>';
+                        // 1) Exact match
+                        let hit = candidates.find(c => c.n === target);
+                        // 2) Substring fallback (працює мінімум 4 символи, щоб не зачепити сміття)
+                        if (!hit && target.length >= 4) {
+                            hit = candidates.find(c => c.n.includes(target) || target.includes(c.n));
+                        }
+                        if (hit) {
+                            return '<a href="#" onclick="event.preventDefault();goToGroup(' + hit.g.id + ',\'' + hit.gn.replace(/'/g, "\\'") + '\')" style="color:var(--teal);text-decoration:none;">' + hit.gn + '</a>';
                         }
                     }
                     return '<span>' + nm + '</span>';
@@ -1480,7 +1509,68 @@
                 else document.getElementById('detail-desc-title').style.display = 'none';
 
                 updateFavDetailBtn();
+                // Схожі товари — асинхронно, не блокує картку
+                loadSimilar(p);
             } catch { document.getElementById('detail-name').textContent = 'Помилка завантаження'; }
+        }
+
+        async function loadSimilar(p) {
+            if (!p) return;
+            const wrap = document.getElementById('detail-similar-wrap');
+            const box = document.getElementById('detail-similar');
+            if (!wrap || !box) return;
+            const params = new URLSearchParams();
+            if (p.id) params.set('id', p.id);
+            if (p.sku) params.set('sku', p.sku);
+            const gid = p.group_id || (p.group && p.group.id);
+            if (gid) params.set('group_id', gid);
+            // Останній рівень MODX-категорії — fallback для пошуку
+            if (Array.isArray(p.category_path) && p.category_path.length) {
+                params.set('category', p.category_path[p.category_path.length - 1]);
+            }
+            try {
+                const res = await fetch(SERVER_URL + '/products/similar?' + params.toString(), { headers: H });
+                const d = await res.json();
+                const items = (d.products || []).slice(0, 10);
+                if (!items.length) return;
+                box.innerHTML = items.map(it => {
+                    const img = it.main_image || (it.images && it.images[0] && it.images[0].url) || '';
+                    const price = it.price ? Math.round(parseFloat(it.price)) + ' грн' : '';
+                    const nameEsc = (it.name || '').replace(/'/g, "\\'");
+                    return '<div class="similar-card" onclick="openDetail(' + it.id + ', \'' + (it.sku || '') + '\')">'
+                         +   '<div class="similar-img-wrap"><div id="sim-img-' + it.id + '">🦷</div></div>'
+                         +   '<div class="similar-name">' + (it.name || '—') + '</div>'
+                         +   '<div class="similar-price">' + price + '</div>'
+                         + '</div>';
+                }).join('');
+                wrap.style.display = 'block';
+                // Лазі-завантаження фото через blob (як скрізь — ngrok-skip)
+                items.forEach(async it => {
+                    const raw = it.main_image || (it.images && it.images[0] && it.images[0].url) || '';
+                    if (!raw) return;
+                    const blob = await loadImageBlob(raw);
+                    const el = document.getElementById('sim-img-' + it.id);
+                    if (blob && el) {
+                        el.outerHTML = '<img id="sim-img-' + it.id + '" src="' + blob + '">';
+                    }
+                });
+            } catch (e) {}
+        }
+
+        function shareProduct() {
+            if (!currentProductId) return;
+            const p = currentProductData || {};
+            const url = 'https://olehhrl.github.io/iradius_miniapp?p=' + currentProductId;
+            const name = (p.name || 'Товар IRadius').replace(/\s+/g, ' ').trim();
+            const text = '🦷 ' + name + (p.price ? ' — ' + Math.round(parseFloat(p.price)) + ' грн' : '');
+            const shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(text);
+            try {
+                if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) {
+                    Telegram.WebApp.openTelegramLink(shareUrl);
+                    return;
+                }
+            } catch (e) {}
+            window.open(shareUrl, '_blank');
         }
 
         // --- FAVORITES ---
@@ -2663,6 +2753,6 @@
             }
         })();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-T</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-U</div>
 </body>
 </html>
