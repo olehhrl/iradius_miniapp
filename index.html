@@ -1377,34 +1377,57 @@
                 // Хлібні крихти: шлях категорії товару (клікабельний)
                 const bc = document.getElementById('detail-breadcrumb');
                 bc.innerHTML = '';
-                // Чи відкрито картку з пошуку? Якщо так — groupStack залишковий від попередньої
-                // категорії й не стосується цього товару. Будуємо з p.group_id (Prom-правда).
                 const openedFromSearch = (detailReturnPage === 'products') || isSearchMode || !!lastSearchQuery;
 
-                // 1) ЗАВЖДИ якщо є group_id з Prom — будуємо шлях з allGroups (найточніше)
-                const gid = p.group_id || (p.group && p.group.id);
-                if (gid && allGroups.length) {
-                    const path = [];
-                    let cur = allGroups.find(g => g.id === gid);
-                    while (cur) {
-                        path.unshift(cur);
-                        cur = allGroups.find(g => g.id === cur.parent_group_id);
+                // Хелпер: для назви категорії з MODX знайти відповідну Prom group (за нормалізованою
+                // назвою). Якщо знайшли — клікабельний лінк; інакше простий текст.
+                const norm = s => String(s || '').toLowerCase().replace(/[\s\-_’'`«»]/g, '').trim();
+                function linkOrText(nm) {
+                    const safe = String(nm || '').replace(/'/g, "\\'");
+                    if (allGroups.length) {
+                        const target = norm(nm);
+                        const g = allGroups.find(g => {
+                            const gn = (g.name_multilang && g.name_multilang.uk) || g.name || '';
+                            return norm(gn) === target;
+                        });
+                        if (g) {
+                            const gn = (g.name_multilang && g.name_multilang.uk) || g.name || nm;
+                            return '<a href="#" onclick="event.preventDefault();goToGroup(' + g.id + ',\'' + gn.replace(/'/g, "\\'") + '\')" style="color:var(--teal);text-decoration:none;">' + gn + '</a>';
+                        }
                     }
-                    if (path.length) {
-                        bc.innerHTML = '📁 ' + path.map(g => {
-                            const name = (g.name_multilang && g.name_multilang.uk) || g.name || '—';
-                            return '<a href="#" onclick="event.preventDefault();goToGroup(' + g.id + ',\'' + name.replace(/'/g, "\\'") + '\')" style="color:var(--teal);text-decoration:none;">' + name + '</a>';
-                        }).join(' › ');
+                    return '<span>' + nm + '</span>';
+                }
+
+                // 1) MODX category_path — справжній шлях категорії з iradius.com.ua
+                //    (точно як на живому сайті). Найвища пріоритетність.
+                if (Array.isArray(p.category_path) && p.category_path.length) {
+                    bc.innerHTML = '📁 ' + p.category_path.map(linkOrText).join(' › ');
+                }
+                // 2) Prom group_id — fallback (для товарів які знайдені на Prom за точним sku)
+                if (!bc.innerHTML) {
+                    const gid = p.group_id || (p.group && p.group.id);
+                    if (gid && allGroups.length) {
+                        const path = [];
+                        let cur = allGroups.find(g => g.id === gid);
+                        while (cur) {
+                            path.unshift(cur);
+                            cur = allGroups.find(g => g.id === cur.parent_group_id);
+                        }
+                        if (path.length) {
+                            bc.innerHTML = '📁 ' + path.map(g => {
+                                const name = (g.name_multilang && g.name_multilang.uk) || g.name || '—';
+                                return '<a href="#" onclick="event.preventDefault();goToGroup(' + g.id + ',\'' + name.replace(/'/g, "\\'") + '\')" style="color:var(--teal);text-decoration:none;">' + name + '</a>';
+                            }).join(' › ');
+                        }
                     }
                 }
-                // 2) Якщо group_id невідомий — fallback на groupStack (тільки коли НЕ з пошуку,
-                // бо інакше підставимо чужу категорію, де користувач був раніше)
+                // 3) groupStack — тільки коли НЕ з пошуку (інакше тягне чужу категорію де був раніше)
                 if (!bc.innerHTML && !openedFromSearch && groupStack.length) {
                     bc.innerHTML = '📁 ' + groupStack.map(g =>
                         '<a href="#" onclick="event.preventDefault();goToGroup(' + g.id + ',\'' + g.name.replace(/'/g, "\\'") + '\')" style="color:var(--teal);text-decoration:none;">' + g.name + '</a>'
                     ).join(' › ');
                 }
-                // 3) Якщо все одно нічого — показуємо контекст пошуку (якщо є)
+                // 4) Все ще нічого — короткий контекст пошуку
                 if (!bc.innerHTML && lastSearchQuery) {
                     bc.innerHTML = '🔍 Знайдено через пошук: <b>' + lastSearchQuery + '</b>';
                 }
@@ -2450,6 +2473,6 @@
         updateBadges();
         loadGroupsFromServer();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-P</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-Q</div>
 </body>
 </html>
