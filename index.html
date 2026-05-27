@@ -178,6 +178,11 @@
         .product-tile.skeleton .tile-img-wrap { background: #eef0f2; }
         .skel-line { border-radius: 4px; }
 
+        /* DELIVERY TABS (форма оформлення) */
+        .delivery-tabs { display: flex; gap: 6px; margin: 6px 0 10px; }
+        .delivery-tab { flex: 1; padding: 10px 6px; background: white; border: 1.5px solid var(--border); border-radius: 12px; font-size: 12px; font-weight: 600; color: var(--text-muted); text-align: center; cursor: pointer; transition: all 0.15s; }
+        .delivery-tab.active { background: var(--teal); border-color: var(--teal); color: white; }
+
         .pagination { display: flex; justify-content: center; gap: 8px; padding: 16px; }
         .pagination button { padding: 8px 18px; border: 1.5px solid var(--teal); border-radius: 20px; background: white; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--teal); }
         .pagination button:disabled { color: var(--border); border-color: var(--border); cursor: default; }
@@ -2209,9 +2214,13 @@
 
             // Форма замовлення
             const savedData = JSON.parse(localStorage.getItem('ir_order_data') || '{}');
-            // Відновлюємо cityRef зі збережених даних
+            // Відновлюємо ВСІ збережені референси/тип доставки — інакше при поверненні
+            // у форму користувач "втрачає" вибір.
             if (savedData.cityRef) cityRef = savedData.cityRef;
+            if (savedData.settlementRef) settlementRef = savedData.settlementRef;
             if (savedData.warehouseRef) warehouseRef = savedData.warehouseRef;
+            if (savedData.streetRef) streetRef = savedData.streetRef;
+            if (savedData.deliveryType) deliveryType = savedData.deliveryType;
             if (total < 400) {
                 formWrap.innerHTML = '';
                 return;
@@ -2229,9 +2238,29 @@
                         <input class="form-input" id="f-city" placeholder="Місто *" value="${savedData.city || ''}" oninput="searchCity(this.value)" autocomplete="off" readonly onfocus="this.removeAttribute('readonly');searchCity(this.value)">
                         <div class="autocomplete-list" id="city-list" style="display:none"></div>
                     </div>
-                    <div class="autocomplete-wrap">
-                        <input class="form-input" id="f-np" placeholder="Відділення Нової Пошти *" value="${savedData.np || ''}" oninput="searchWarehouse(this.value)" autocomplete="off" ${savedData.cityRef ? '' : 'disabled'} readonly onfocus="this.removeAttribute('readonly');if(cityRef)searchWarehouse(this.value)">
-                        <div class="autocomplete-list" id="np-list" style="display:none"></div>
+                    <!-- Тип доставки: відділення / поштомат / курʼєр -->
+                    <div class="delivery-tabs" id="delivery-tabs">
+                        <div class="delivery-tab ${(savedData.deliveryType || 'branch') === 'branch' ? 'active' : ''}" data-type="branch" onclick="setDeliveryType('branch')">🏤 Відділення</div>
+                        <div class="delivery-tab ${savedData.deliveryType === 'postomat' ? 'active' : ''}" data-type="postomat" onclick="setDeliveryType('postomat')">📦 Поштомат</div>
+                        <div class="delivery-tab ${savedData.deliveryType === 'courier' ? 'active' : ''}" data-type="courier" onclick="setDeliveryType('courier')">🚚 Курʼєр</div>
+                    </div>
+                    <!-- Відділення / Поштомат -->
+                    <div id="warehouse-fields" style="display:${(savedData.deliveryType || 'branch') === 'courier' ? 'none' : 'block'};">
+                        <div class="autocomplete-wrap">
+                            <input class="form-input" id="f-np" placeholder="${savedData.deliveryType === 'postomat' ? 'Поштомат Нової Пошти *' : 'Відділення Нової Пошти *'}" value="${savedData.np || ''}" oninput="searchWarehouse(this.value)" autocomplete="off" ${savedData.cityRef ? '' : 'disabled'} readonly onfocus="this.removeAttribute('readonly');if(cityRef)searchWarehouse(this.value)">
+                            <div class="autocomplete-list" id="np-list" style="display:none"></div>
+                        </div>
+                    </div>
+                    <!-- Курʼєрська адресна доставка -->
+                    <div id="courier-fields" style="display:${savedData.deliveryType === 'courier' ? 'block' : 'none'};">
+                        <div class="autocomplete-wrap">
+                            <input class="form-input" id="f-street" placeholder="Вулиця *" value="${savedData.streetName || ''}" oninput="searchStreet(this.value)" autocomplete="off" ${savedData.cityRef ? '' : 'disabled'} readonly onfocus="this.removeAttribute('readonly');if(settlementRef)searchStreet(this.value)">
+                            <div class="autocomplete-list" id="street-list" style="display:none"></div>
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <input class="form-input" id="f-house" placeholder="Будинок *" value="${savedData.house || ''}" style="flex:1;">
+                            <input class="form-input" id="f-apt" placeholder="Квартира" value="${savedData.apartment || ''}" style="flex:1;">
+                        </div>
                     </div>
                     <input class="form-input" id="f-comment" placeholder="Коментар до замовлення" value="${savedData.comment || ''}">
                     <label style="display:flex;align-items:center;gap:8px;margin:6px 2px 2px;font-size:13px;color:var(--text);cursor:pointer;">
@@ -2273,10 +2302,35 @@
         }
 
         // --- NOVA POSHTA AUTOCOMPLETE ---
-        let cityRef = null;
+        let cityRef = null;          // DeliveryCity — для getWarehouses (CityRef)
+        let settlementRef = null;    // Ref — для searchSettlementStreets (SettlementRef)
         let warehouseRef = null;
+        let streetRef = null;
         let cityTimer = null;
         let warehouseTimer = null;
+        let streetTimer = null;
+        let deliveryType = 'branch'; // 'branch' | 'postomat' | 'courier'
+
+        function setDeliveryType(type) {
+            deliveryType = type;
+            document.querySelectorAll('.delivery-tab').forEach(el => {
+                el.classList.toggle('active', el.getAttribute('data-type') === type);
+            });
+            const wh = document.getElementById('warehouse-fields');
+            const co = document.getElementById('courier-fields');
+            if (wh) wh.style.display = (type === 'courier') ? 'none' : 'block';
+            if (co) co.style.display = (type === 'courier') ? 'block' : 'none';
+            const npInput = document.getElementById('f-np');
+            if (npInput) {
+                npInput.placeholder = (type === 'postomat') ? 'Поштомат Нової Пошти *' : 'Відділення Нової Пошти *';
+                // При зміні типу — скидаємо вибір (бо це різні списки)
+                if (type !== 'courier') {
+                    npInput.value = '';
+                    warehouseRef = null;
+                    if (cityRef) loadAllWarehouses();
+                }
+            }
+        }
 
         function searchCity(q) {
             clearTimeout(cityTimer);
@@ -2289,29 +2343,34 @@
                     const results = data.results || [];
                     if (!results.length) { list.style.display = 'none'; return; }
                     list.innerHTML = results.map(r =>
-                        '<div class="autocomplete-item" onclick="selectCity(\'' + r.ref + '\', \'' + r.name.replace(/\'/g, "\\'") + '\')">' + r.name + '</div>'
+                        '<div class="autocomplete-item" onclick="selectCity(\'' + r.ref + '\', \'' + (r.settlement_ref || '') + '\', \'' + r.name.replace(/\'/g, "\\'") + '\')">' + r.name + '</div>'
                     ).join('');
                     list.style.display = 'block';
                 } catch { list.style.display = 'none'; }
             }, 400);
         }
 
-        function selectCity(ref, name) {
+        function selectCity(ref, sref, name) {
             cityRef = ref;
+            settlementRef = sref || null;
             document.getElementById('f-city').value = name;
             document.getElementById('city-list').style.display = 'none';
+            // Скидаємо вибрані warehouse/street — змінили місто
+            warehouseRef = null;
+            streetRef = null;
             const npInput = document.getElementById('f-np');
-            npInput.disabled = false;
-            npInput.value = '';
-            // Одразу завантажуємо всі відділення
-            loadAllWarehouses();
+            if (npInput) { npInput.disabled = false; npInput.value = ''; }
+            const stInput = document.getElementById('f-street');
+            if (stInput) { stInput.disabled = false; stInput.value = ''; }
+            // Одразу завантажуємо warehouses відповідного типу (якщо не курʼєр)
+            if (deliveryType !== 'courier') loadAllWarehouses();
         }
 
         async function loadAllWarehouses() {
             const list = document.getElementById('np-list');
-            if (!cityRef) return;
+            if (!list || !cityRef) return;
             try {
-                const res = await fetch(SERVER_URL + '/np/warehouses?city_ref=' + cityRef + '&q=', { headers: H });
+                const res = await fetch(SERVER_URL + '/np/warehouses?city_ref=' + cityRef + '&q=&kind=' + deliveryType, { headers: H });
                 const data = await res.json();
                 const results = data.results || [];
                 if (!results.length) { list.style.display = 'none'; return; }
@@ -2325,10 +2384,10 @@
         function searchWarehouse(q) {
             clearTimeout(warehouseTimer);
             const list = document.getElementById('np-list');
-            if (!cityRef) { list.style.display = 'none'; return; }
+            if (!list || !cityRef) { if (list) list.style.display = 'none'; return; }
             warehouseTimer = setTimeout(async () => {
                 try {
-                    const res = await fetch(SERVER_URL + '/np/warehouses?city_ref=' + cityRef + '&q=' + encodeURIComponent(q), { headers: H });
+                    const res = await fetch(SERVER_URL + '/np/warehouses?city_ref=' + cityRef + '&q=' + encodeURIComponent(q) + '&kind=' + deliveryType, { headers: H });
                     const data = await res.json();
                     const results = data.results || [];
                     if (!results.length) { list.style.display = 'none'; return; }
@@ -2344,6 +2403,31 @@
             warehouseRef = ref;
             document.getElementById('f-np').value = name;
             document.getElementById('np-list').style.display = 'none';
+        }
+
+        function searchStreet(q) {
+            clearTimeout(streetTimer);
+            const list = document.getElementById('street-list');
+            if (!list || !settlementRef) { if (list) list.style.display = 'none'; return; }
+            if (!q || q.length < 2) { list.style.display = 'none'; return; }
+            streetTimer = setTimeout(async () => {
+                try {
+                    const res = await fetch(SERVER_URL + '/np/streets?settlement_ref=' + settlementRef + '&q=' + encodeURIComponent(q), { headers: H });
+                    const data = await res.json();
+                    const results = data.results || [];
+                    if (!results.length) { list.style.display = 'none'; return; }
+                    list.innerHTML = results.map(r =>
+                        '<div class="autocomplete-item" onclick="selectStreet(\'' + r.ref + '\', \'' + r.name.replace(/\'/g, "\\'") + '\')">' + r.name + '</div>'
+                    ).join('');
+                    list.style.display = 'block';
+                } catch { list.style.display = 'none'; }
+            }, 300);
+        }
+
+        function selectStreet(ref, name) {
+            streetRef = ref;
+            document.getElementById('f-street').value = name;
+            document.getElementById('street-list').style.display = 'none';
         }
 
         document.addEventListener('click', function(e) {
@@ -2396,12 +2480,32 @@
                 hasError = true;
             }
             if (!city) { document.getElementById('f-city').classList.add('error'); hasError = true; }
-            if (!np) { document.getElementById('f-np').classList.add('error'); hasError = true; }
             // Перевіряємо що місто вибране зі списку (є cityRef)
             if (city && !cityRef) {
                 document.getElementById('f-city').classList.add('error');
                 showToast('Оберіть місто зі списку');
                 hasError = true;
+            }
+            // === ВАЛІДАЦІЯ ДОСТАВКИ === залежно від типу
+            let streetName = '', house = '', apartment = '';
+            if (deliveryType === 'courier') {
+                streetName = document.getElementById('f-street').value.trim();
+                house = document.getElementById('f-house').value.trim();
+                apartment = document.getElementById('f-apt').value.trim();
+                if (!streetName) { document.getElementById('f-street').classList.add('error'); hasError = true; }
+                if (streetName && !streetRef) {
+                    document.getElementById('f-street').classList.add('error');
+                    showToast('Оберіть вулицю зі списку');
+                    hasError = true;
+                }
+                if (!house) { document.getElementById('f-house').classList.add('error'); hasError = true; }
+            } else {
+                if (!np) { document.getElementById('f-np').classList.add('error'); hasError = true; }
+                if (np && !warehouseRef) {
+                    document.getElementById('f-np').classList.add('error');
+                    showToast(deliveryType === 'postomat' ? 'Оберіть поштомат зі списку' : 'Оберіть відділення зі списку');
+                    hasError = true;
+                }
             }
             if (hasError) { showToast('Заповніть всі поля правильно'); return; }
 
@@ -2419,8 +2523,13 @@
                 if (rErr) { showToast('Заповніть дані отримувача правильно'); return; }
             }
 
-            // Зберігаємо дані клієнта
-            localStorage.setItem('ir_order_data', JSON.stringify({ name, surname, phone, city, np, comment, cityRef, warehouseRef, otherRecipient, rName, rSurname, rPhone }));
+            // Зберігаємо дані клієнта (включно з новими полями доставки)
+            localStorage.setItem('ir_order_data', JSON.stringify({
+                name, surname, phone, city, np, comment,
+                cityRef, settlementRef, warehouseRef, streetRef,
+                deliveryType, streetName, house, apartment,
+                otherRecipient, rName, rSurname, rPhone
+            }));
 
             const btn = document.querySelector('.btn-order-submit');
             btn.disabled = true;
@@ -2457,6 +2566,10 @@
                 order_num: orderNum,
                 city_ref: cityRef || '',
                 warehouse_ref: warehouseRef || '',
+                delivery_type: deliveryType,
+                street_name: streetName || '',
+                house: house || '',
+                apartment: apartment || '',
                 other_recipient: otherRecipient || false,
                 recipient_name: rName || '',
                 recipient_surname: rSurname || '',
@@ -2550,6 +2663,6 @@
             }
         })();
     </script>
-    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-S</div>
+    <div style="position:fixed;bottom:62px;right:6px;z-index:9999;font-size:9px;color:#bbb;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:6px;pointer-events:none;">v25.05-T</div>
 </body>
 </html>
