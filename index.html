@@ -2307,6 +2307,10 @@
                 </div>`;
             }
             html += '<div class="cart-total"><span class="cart-total-label">Разом:</span><span class="cart-total-price">' + total + ' грн</span></div>';
+            // Якщо сума менша за мінімум — пропонуємо повернутись у каталог за товарами
+            if (total < MIN_ORDER) {
+                html += '<div style="padding:0 14px 8px;"><button onclick="goHome()" style="width:100%;padding:13px;background:var(--teal);border:none;border-radius:12px;font-size:14px;font-weight:700;color:white;cursor:pointer;">🛍 Додати товари</button></div>';
+            }
             html += '<div style="padding:0 14px 4px;"><button onclick="clearCart()" style="width:100%;padding:11px;background:white;border:1.5px solid var(--border);border-radius:12px;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;">🗑 Очистити кошик</button></div>';
             wrap.innerHTML = html;
 
