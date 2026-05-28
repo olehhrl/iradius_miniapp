@@ -57,7 +57,18 @@
         .header-settings:active { opacity: 0.6; transform: rotate(30deg); transition: transform .2s; }
 
         .search-wrap { padding: 0 12px 8px; display: flex; position: relative; }
-        .search-wrap input { flex: 1; width: 100%; padding: 8px 14px; border: none; border-radius: 18px; font-size: 13px; background: rgba(255,255,255,.9); outline: none; }
+        .search-wrap input { flex: 1; width: 100%; padding: 8px 40px 8px 14px; border: none; border-radius: 18px; font-size: 13px; background: rgba(255,255,255,.9); outline: none; }
+        #voiceBtn.recording { color: var(--red); animation: voice-pulse 1.2s ease-in-out infinite; }
+        @keyframes voice-pulse { 0%, 100% { transform: translateY(-50%) scale(1); } 50% { transform: translateY(-50%) scale(1.18); } }
+
+        /* Нещодавно переглянуті — горизонтальний скрол */
+        .recent-strip { display: flex; gap: 8px; overflow-x: auto; padding: 0 14px 8px; scrollbar-width: none; }
+        .recent-strip::-webkit-scrollbar { display: none; }
+        .recent-card { flex: 0 0 100px; background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 6px; cursor: pointer; box-shadow: var(--shadow); }
+        .recent-card:active { transform: scale(0.96); }
+        .recent-card img, .recent-card .recent-ph { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 6px; background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+        .recent-card .recent-name { font-size: 9.5px; font-weight: 600; color: var(--text); line-height: 1.25; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .recent-card .recent-price { font-size: 11px; font-weight: 700; color: var(--teal); margin-top: 3px; }
         .search-wrap input:focus { background: white; }
         .search-wrap input::placeholder { color: #999; }
 
@@ -155,6 +166,8 @@
         .detail-actions { position: fixed; bottom: 60px; left: 0; right: 0; background: var(--white); border-top: 1px solid var(--border); padding: 12px 16px; display: flex; gap: 10px; align-items: center; }
         .btn-fav-detail { width: 36px; height: 36px; border-radius: 50%; border: 2px solid #ddd; background: white; color: #b8c0c4; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.1); padding: 0; }
         .btn-fav-detail.active { border-color: var(--red); background: #fff0f0; color: var(--red); }
+        #btnCompareDetail.active { border-color: var(--teal); background: var(--teal-light); }
+        #btnCompareDetail.active svg { stroke: var(--teal); }
         .btn-fav-detail svg { width: 19px; height: 19px; display: block; }
         .btn-cart-detail { flex: 1; padding: 14px; background: var(--teal); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; }
 
@@ -299,12 +312,17 @@
         </div>
         <div class="search-wrap" id="searchWrap">
             <input type="text" id="searchInput" placeholder="🔍 Пошук товарів...">
+            <button id="voiceBtn" onclick="startVoiceSearch()" title="Голосовий пошук" style="position:absolute;right:18px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:6px;display:flex;align-items:center;justify-content:center;color:var(--teal-dark);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </button>
         </div>
     </div>
 
     <!-- CATALOG -->
     <div class="content" id="page-main">
         <div id="breadcrumb-wrap"></div>
+        <!-- Нещодавно переглянуті — заповнюється в renderRecentlyViewed() -->
+        <div id="recently-viewed-wrap" style="display:none;"></div>
         <div class="section-title" id="catalog-title">Категорії</div>
         <div class="categories-grid" id="categories-grid">
             <div style="grid-column:1/-1" class="state-box"><div class="spinner"></div></div>
@@ -324,7 +342,9 @@
             <button class="sort-btn" id="sort-expensive" onclick="setSort('-price', this)">💎 Дорожчі</button>
             <button class="sort-btn" id="sort-popular" onclick="setSort('popularity', this)">🔥 Популярні</button>
             <button class="sort-btn" id="sort-name" onclick="toggleNameSort(this)">🔤 А–Я</button>
+            <button class="sort-btn" id="filter-btn" onclick="openFilters()" style="margin-left:auto;background:var(--teal-light);color:var(--teal-dark);">🔧 Фільтри</button>
         </div>
+        <div id="active-filters" style="display:none;padding:6px 14px 0;font-size:11px;color:var(--text-muted);"></div>
         <div id="products-container"></div>
         <div class="pagination" id="pagination" style="display:none;">
             <button id="btnPrev" disabled>← Назад</button>
@@ -347,8 +367,17 @@
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--teal-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                     </button>
                     <button class="btn-fav-detail" id="btnFavDetail" onclick="toggleFavorite()"><svg class="heart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
+                    <button class="btn-fav-detail" id="btnCompareDetail" onclick="toggleCompareFromDetail()" title="Додати до порівняння" style="background:white;border:1.5px solid var(--border);border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--teal-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v18H3V3zM14 3h7v18h-7V3z"/></svg>
+                    </button>
                     <div class="detail-presence-badge" id="detail-presence"></div>
                 </div>
+            </div>
+            <!-- Підписка на щомісячне нагадування -->
+            <div style="margin:14px 0 10px;">
+                <button id="btnReminder" onclick="toggleReminder()" style="width:100%;padding:11px;background:white;color:var(--teal-dark);border:1.5px solid var(--teal);border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;">
+                    🔔 Нагадувати раз на місяць
+                </button>
             </div>
             <div class="detail-desc-title" id="detail-desc-title" style="display:none;">Опис</div>
             <div class="detail-desc" id="detail-desc"></div>
@@ -360,6 +389,85 @@
         </div>
         <div class="detail-actions">
             <button class="btn-cart-detail" style="width:100%" onclick="addToCart()">🛒 Додати в кошик</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА ПОРІВНЯННЯ -->
+    <div id="compare-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:700;align-items:flex-end;justify-content:center;" onclick="closeCompare()">
+        <div style="background:var(--white);border-radius:20px 20px 0 0;padding:18px 14px;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;" onclick="event.stopPropagation()">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <div style="font-size:17px;font-weight:800;color:var(--text);">⚖️ Порівняння</div>
+                <button onclick="closeCompare()" style="background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;line-height:1;padding:0 4px;">✕</button>
+            </div>
+            <div id="compare-content"></div>
+        </div>
+    </div>
+
+    <!-- Плаваюча кнопка "Порівняти" коли є вибрані товари -->
+    <div id="compare-fab" style="display:none;position:fixed;bottom:78px;right:14px;z-index:300;background:var(--teal);color:white;padding:10px 14px;border-radius:24px;box-shadow:0 4px 12px rgba(0,0,0,0.18);cursor:pointer;font-size:13px;font-weight:700;display:none;align-items:center;gap:6px;" onclick="openCompare()">
+        ⚖️ Порівняти <span id="compare-fab-count" style="background:white;color:var(--teal-dark);padding:1px 7px;border-radius:10px;font-size:11px;">0</span>
+    </div>
+
+    <!-- МОДАЛКА ФІЛЬТРІВ -->
+    <div id="filters-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:700;align-items:flex-end;justify-content:center;" onclick="closeFilters()">
+        <div style="background:var(--white);border-radius:20px 20px 0 0;padding:22px 18px 22px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;" onclick="event.stopPropagation()">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                <div style="font-size:17px;font-weight:800;color:var(--text);">🔧 Фільтри</div>
+                <button onclick="closeFilters()" style="background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;line-height:1;padding:0 4px;">✕</button>
+            </div>
+
+            <!-- Тільки в наявності -->
+            <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <div style="font-size:14px;font-weight:700;color:var(--text);">✅ Тільки в наявності</div>
+                    <label style="position:relative;display:inline-block;width:50px;height:28px;flex-shrink:0;cursor:pointer;">
+                        <input type="checkbox" id="filter-instock" style="opacity:0;width:0;height:0;">
+                        <span id="filter-instock-slider" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:28px;transition:.2s;">
+                            <span style="position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Цінова вилка -->
+            <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:10px;">
+                <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">💰 Ціна, грн</div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <input type="number" id="filter-price-min" placeholder="Від" style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none;background:var(--white);color:var(--text);">
+                    <span style="color:var(--text-muted);">—</span>
+                    <input type="number" id="filter-price-max" placeholder="До" style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none;background:var(--white);color:var(--text);">
+                </div>
+            </div>
+
+            <!-- Виробник -->
+            <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:10px;">
+                <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">🏭 Виробник</div>
+                <div id="filter-manufacturers" style="display:flex;flex-wrap:wrap;gap:6px;max-height:180px;overflow-y:auto;">
+                    <!-- chips заповнюються динамічно -->
+                </div>
+            </div>
+
+            <div style="display:flex;gap:8px;margin-top:14px;">
+                <button onclick="resetFilters()" style="flex:1;padding:12px;background:white;color:var(--text-muted);border:1.5px solid var(--border);border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;">Скинути</button>
+                <button onclick="applyFilters()" style="flex:2;padding:12px;background:var(--teal);color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;">Застосувати</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА МАСОВОГО ДОДАВАННЯ ЗА АРТИКУЛАМИ -->
+    <div id="bulk-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:700;align-items:flex-end;justify-content:center;" onclick="closeBulkAdd()">
+        <div style="background:var(--white);border-radius:20px 20px 0 0;padding:22px 18px 22px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;" onclick="event.stopPropagation()">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div style="font-size:17px;font-weight:800;color:var(--text);">📋 Додати списком</div>
+                <button onclick="closeBulkAdd()" style="background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;line-height:1;padding:0 4px;">✕</button>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">
+                Вставте артикули — по одному в рядку, через кому або пробіл.<br>
+                Приклад: <code style="background:var(--bg);padding:2px 5px;border-radius:4px;">003557, 003544, 009559</code>
+            </div>
+            <textarea id="bulk-input" rows="6" placeholder="003557&#10;003544&#10;009559&#10;..." style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:12px;font-size:14px;outline:none;resize:vertical;font-family:'SF Mono', Consolas, monospace;box-sizing:border-box;background:var(--white);color:var(--text);"></textarea>
+            <div id="bulk-result" style="margin-top:10px;font-size:12px;"></div>
+            <button id="bulk-submit" onclick="submitBulkAdd()" style="margin-top:12px;width:100%;padding:13px;background:var(--teal);color:white;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;">🛒 Додати в кошик</button>
         </div>
     </div>
 
@@ -683,6 +791,7 @@
             renderGroups(getRootGroups());
             renderBreadcrumb();
             setNav('nav-catalog');
+            renderRecentlyViewed();
         }
 
         function goBack() {
@@ -937,6 +1046,14 @@
             const groupName = groupStack.length > 0 ? groupStack[groupStack.length-1].name : 'Товари';
             document.getElementById('headerTitle').textContent = groupName;
             setNav('nav-catalog');
+            // Скидаємо фільтри при зміні категорії (інакше з попередньої залишається сміття)
+            if (typeof filterState !== 'undefined') {
+                filterState.inStock = false;
+                filterState.priceMin = null;
+                filterState.priceMax = null;
+                filterState.manufacturers.clear();
+                renderActiveFiltersHint();
+            }
             loadProducts(1, groupId);
         }
 
@@ -946,6 +1063,7 @@
                 const data = await res.json();
                 allGroups = data.groups || [];
                 renderGroups(getRootGroups());
+                renderRecentlyViewed();
             } catch {
                 document.getElementById('categories-grid').innerHTML =
                     '<div style="grid-column:1/-1" class="state-box"><div class="icon">⚠️</div><p>Помилка завантаження</p></div>';
@@ -1107,6 +1225,523 @@
             }, 400);
         });
         document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(searchTimer); doSearch(); } });
+
+        // --- VOICE SEARCH (Web Speech API) ---
+        let voiceRecognition = null;
+        function startVoiceSearch() {
+            const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!Rec) {
+                showToast('Голосовий пошук не підтримується в цьому браузері');
+                return;
+            }
+            const btn = document.getElementById('voiceBtn');
+            // Якщо вже слухає — зупиняємо
+            if (voiceRecognition) {
+                try { voiceRecognition.stop(); } catch(e) {}
+                voiceRecognition = null;
+                btn.classList.remove('recording');
+                return;
+            }
+            voiceRecognition = new Rec();
+            voiceRecognition.lang = 'uk-UA';
+            voiceRecognition.interimResults = false;
+            voiceRecognition.maxAlternatives = 1;
+            btn.classList.add('recording');
+            showToast('Слухаю... говоріть 🎤');
+            try { Telegram.WebApp.HapticFeedback.impactOccurred('medium'); } catch(e) {}
+
+            voiceRecognition.onresult = (e) => {
+                const transcript = e.results[0][0].transcript || '';
+                const input = document.getElementById('searchInput');
+                input.value = transcript;
+                input.dispatchEvent(new Event('input'));
+                // Запускаємо пошук одразу
+                clearTimeout(searchTimer);
+                doSearch();
+            };
+            voiceRecognition.onerror = (e) => {
+                showToast(e.error === 'no-speech' ? 'Не почула. Спробуйте ще раз 🎤'
+                                                  : 'Помилка мікрофону: ' + e.error);
+            };
+            voiceRecognition.onend = () => {
+                btn.classList.remove('recording');
+                voiceRecognition = null;
+            };
+            try { voiceRecognition.start(); } catch (e) {
+                btn.classList.remove('recording');
+                voiceRecognition = null;
+                showToast('Не вдалося запустити мікрофон');
+            }
+        }
+
+        // --- REMINDER (підписка раз на місяць) ---
+        let myReminders = new Set(); // продукт_id які підписані
+
+        async function loadMyReminders() {
+            const tgId = getTgUserId();
+            if (!tgId) return;
+            try {
+                const r = await fetch(SERVER_URL + '/reminders?tg_user_id=' + tgId, { headers: H });
+                const d = await r.json();
+                myReminders = new Set((d.reminders || []).map(x => String(x.product_id)));
+            } catch (e) {}
+        }
+
+        function updateReminderBtn() {
+            const btn = document.getElementById('btnReminder');
+            if (!btn || !currentProductId) return;
+            const subscribed = myReminders.has(String(currentProductId));
+            if (subscribed) {
+                btn.style.background = 'var(--teal-light)';
+                btn.style.borderColor = 'var(--teal)';
+                btn.innerHTML = '✅ Нагадування увімкнено (вимкнути)';
+            } else {
+                btn.style.background = 'white';
+                btn.innerHTML = '🔔 Нагадувати раз на місяць';
+            }
+        }
+
+        async function toggleReminder() {
+            const tgId = getTgUserId();
+            if (!tgId) {
+                showToast('Не вдалося визначити користувача');
+                return;
+            }
+            const pid = String(currentProductId);
+            const p = currentProductData || {};
+            const btn = document.getElementById('btnReminder');
+            btn.disabled = true;
+            const isOn = myReminders.has(pid);
+            try {
+                if (isOn) {
+                    await fetch(SERVER_URL + '/reminder', {
+                        method: 'DELETE',
+                        headers: { ...H, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tg_user_id: tgId, product_id: pid })
+                    });
+                    myReminders.delete(pid);
+                    showToast('Нагадування вимкнено');
+                } else {
+                    await fetch(SERVER_URL + '/reminder', {
+                        method: 'POST',
+                        headers: { ...H, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tg_user_id: tgId, product_id: pid, sku: p.sku || '', name: p.name || '' })
+                    });
+                    myReminders.add(pid);
+                    showToast('Підписано! Нагадування через 30 днів 🔔');
+                }
+            } catch (e) {
+                showToast('Помилка зʼєднання');
+            }
+            btn.disabled = false;
+            updateReminderBtn();
+        }
+
+        // --- PDF DOWNLOAD ---
+        async function downloadOrderPdf(orderId) {
+            const phone = userPhone || '';
+            if (!phone) { showToast('Не вдалося визначити телефон'); return; }
+            const url = `${SERVER_URL}/orders/${orderId}/pdf?phone=${encodeURIComponent(phone)}`;
+            showToast('📄 Готую PDF...');
+            try {
+                const res = await fetch(url, { headers: H });
+                if (!res.ok) { showToast('Не вдалося згенерувати PDF'); return; }
+                const blob = await res.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                // На мобільному Telegram WebView відкриваємо в новій вкладці через openLink
+                try {
+                    if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink) {
+                        // openLink не вміє blob URL — використовуємо завантаження через <a>
+                    }
+                } catch (e) {}
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = `order-${orderId}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+            } catch (e) {
+                showToast('Помилка: ' + (e.message || e));
+            }
+        }
+
+        // --- COMPARE (порівняння товарів) ---
+        let compareList = []; // [{id, sku, name, price, presence, main_image, description}]
+        const COMPARE_MAX = 3;
+
+        function toggleCompareFromDetail() {
+            const p = currentProductData;
+            if (!p) return;
+            const btn = document.getElementById('btnCompareDetail');
+            toggleCompare(p.id, p.sku || '', p.name, p.price || 0, p.presence || '', p.main_image || '', btn);
+        }
+
+        function toggleCompare(id, sku, name, price, presence, image, btn) {
+            const idx = compareList.findIndex(c => String(c.id) === String(id));
+            if (idx >= 0) {
+                compareList.splice(idx, 1);
+                if (btn) btn.classList.remove('active');
+                showToast('Видалено з порівняння');
+            } else {
+                if (compareList.length >= COMPARE_MAX) {
+                    showToast(`Не більше ${COMPARE_MAX} товарів одночасно`);
+                    return;
+                }
+                compareList.push({ id, sku, name, price, presence, main_image: image });
+                if (btn) btn.classList.add('active');
+                showToast(`Додано до порівняння (${compareList.length}/${COMPARE_MAX})`);
+            }
+            updateCompareFab();
+            try { Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch(e) {}
+        }
+
+        function updateCompareFab() {
+            const fab = document.getElementById('compare-fab');
+            const cnt = document.getElementById('compare-fab-count');
+            if (compareList.length >= 2) {
+                fab.style.display = 'inline-flex';
+                cnt.textContent = compareList.length;
+            } else {
+                fab.style.display = 'none';
+            }
+        }
+
+        async function openCompare() {
+            const modal = document.getElementById('compare-modal');
+            const content = document.getElementById('compare-content');
+            content.innerHTML = '<div class="state-box"><div class="spinner"></div></div>';
+            modal.style.display = 'flex';
+            // Тягнемо повні картки для кожного, щоб мати опис
+            const full = await Promise.all(compareList.map(async c => {
+                try {
+                    const url = c.sku ? `${SERVER_URL}/products/sku/${c.sku}` : `${SERVER_URL}/products/${c.id}`;
+                    const r = await fetch(url, { headers: H });
+                    const d = await r.json();
+                    return d.product || c;
+                } catch (e) { return c; }
+            }));
+            renderCompareContent(full);
+        }
+
+        function closeCompare() { document.getElementById('compare-modal').style.display = 'none'; }
+
+        function renderCompareContent(items) {
+            const content = document.getElementById('compare-content');
+            if (!items.length) {
+                content.innerHTML = '<div class="state-box"><p>Немає товарів для порівняння</p></div>';
+                return;
+            }
+            // Горизонтальний скрол з колонками
+            const cols = items.map(it => {
+                const sku = String(it.sku || '').replace(/'/g, "\\'");
+                const rawImg = it.main_image || '';
+                const imgTag = (rawImg && rawImg.indexOf('https://iradius.com.ua/') === 0)
+                    ? `<img src="${rawImg}" style="width:100%;height:80px;object-fit:contain;background:var(--bg);border-radius:8px;">`
+                    : `<div style="width:100%;height:80px;background:var(--bg);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px;">🦷</div>`;
+                const m = extractManufacturer(it.name) || '—';
+                const desc = (it.description || '').replace(/<[^>]+>/g, '').slice(0, 180);
+                const isAvail = it.presence === 'available';
+                return `<div style="flex:0 0 180px;background:var(--bg);border-radius:10px;padding:10px;">
+                    ${imgTag}
+                    <div style="font-size:12px;font-weight:700;color:var(--text);margin-top:8px;line-height:1.3;min-height:44px;cursor:pointer;" onclick="closeCompare();openDetail(${it.id},'${sku}')">${(it.name||'').slice(0,80)}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Арт: ${it.sku || '—'}</div>
+                    <div style="font-size:15px;font-weight:800;color:var(--teal);margin-top:6px;">${it.price ? it.price + ' грн' : '—'}</div>
+                    <div style="font-size:11px;margin-top:4px;color:${isAvail ? 'var(--green)' : 'var(--red)'};">${isAvail ? '✅ В наявності' : '❌ Немає'}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">${m}</div>
+                    <div style="font-size:10px;color:var(--text-muted);margin-top:6px;line-height:1.4;max-height:80px;overflow:hidden;">${desc}${desc.length >= 180 ? '...' : ''}</div>
+                    <button onclick="removeFromCompare(${it.id})" style="margin-top:8px;width:100%;padding:6px;background:white;color:var(--text-muted);border:1px solid var(--border);border-radius:8px;font-size:11px;cursor:pointer;">Видалити</button>
+                </div>`;
+            }).join('');
+            content.innerHTML = `<div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;">${cols}</div>
+                <button onclick="clearCompare()" style="margin-top:14px;width:100%;padding:10px;background:white;color:var(--text-muted);border:1.5px solid var(--border);border-radius:10px;font-size:12px;cursor:pointer;">🗑 Очистити порівняння</button>`;
+        }
+
+        function removeFromCompare(id) {
+            compareList = compareList.filter(c => String(c.id) !== String(id));
+            // Знімаємо позначку з відповідної кнопки в каталозі
+            const btn = document.getElementById('cmp-' + id);
+            if (btn) btn.classList.remove('active');
+            updateCompareFab();
+            if (compareList.length < 2) { closeCompare(); return; }
+            openCompare();
+        }
+        function clearCompare() {
+            compareList.forEach(c => {
+                const btn = document.getElementById('cmp-' + c.id);
+                if (btn) btn.classList.remove('active');
+            });
+            compareList = [];
+            updateCompareFab();
+            closeCompare();
+        }
+
+        // --- FILTERS ---
+        // Стан фільтрів — окремо від UI, застосовується до fullList.
+        const filterState = {
+            inStock: false,
+            priceMin: null,
+            priceMax: null,
+            manufacturers: new Set(),  // обрані виробники
+        };
+
+        // Витягуємо виробника з назви: текст у дужках наприкінці типу "(Heraeus Kulzer)"
+        function extractManufacturer(name) {
+            if (!name) return '';
+            const m = name.match(/\(([^)]+)\)\s*$/);
+            if (!m) return '';
+            // Фільтруємо короткі/числові — це не виробник
+            const v = m[1].trim();
+            if (v.length < 3 || /^\d+$/.test(v)) return '';
+            return v;
+        }
+
+        function getUniqueManufacturers(items) {
+            const set = new Map(); // manufacturer → count
+            for (const it of items) {
+                const m = extractManufacturer(it.name);
+                if (m) set.set(m, (set.get(m) || 0) + 1);
+            }
+            // Сортуємо за частотою (топ-виробники зверху)
+            return [...set.entries()].sort((a, b) => b[1] - a[1]);
+        }
+
+        function openFilters() {
+            // Заповнюємо UI поточним станом
+            document.getElementById('filter-instock').checked = filterState.inStock;
+            _syncToggle('filter-instock-slider', 'filter-instock', filterState.inStock);
+            document.getElementById('filter-price-min').value = filterState.priceMin || '';
+            document.getElementById('filter-price-max').value = filterState.priceMax || '';
+
+            // Чіпи виробників
+            const list = fullList && fullList.length ? fullList : [];
+            const manus = getUniqueManufacturers(list);
+            const chipsWrap = document.getElementById('filter-manufacturers');
+            if (manus.length === 0) {
+                chipsWrap.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">У цій категорії виробник не вказаний</div>';
+            } else {
+                chipsWrap.innerHTML = manus.map(([m, count]) => {
+                    const active = filterState.manufacturers.has(m);
+                    const escaped = m.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                    return `<button onclick="toggleManufacturer('${escaped}')"
+                        style="padding:7px 11px;border:1.5px solid ${active ? 'var(--teal)' : 'var(--border)'};
+                               background:${active ? 'var(--teal)' : 'var(--white)'};color:${active ? 'white' : 'var(--text)'};
+                               border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;">
+                        ${m} <span style="opacity:0.7;font-weight:400;">${count}</span></button>`;
+                }).join('');
+            }
+
+            // Слухач toggle для in-stock
+            const cbIn = document.getElementById('filter-instock');
+            cbIn.onchange = () => _syncToggle('filter-instock-slider', 'filter-instock', cbIn.checked);
+
+            document.getElementById('filters-modal').style.display = 'flex';
+        }
+        function closeFilters() { document.getElementById('filters-modal').style.display = 'none'; }
+
+        function toggleManufacturer(m) {
+            if (filterState.manufacturers.has(m)) filterState.manufacturers.delete(m);
+            else filterState.manufacturers.add(m);
+            openFilters(); // re-render chips
+        }
+
+        function resetFilters() {
+            filterState.inStock = false;
+            filterState.priceMin = null;
+            filterState.priceMax = null;
+            filterState.manufacturers.clear();
+            applyFilters();
+        }
+
+        function applyFilters() {
+            // Збираємо актуальний стан з UI
+            filterState.inStock = document.getElementById('filter-instock').checked;
+            const pmin = parseFloat(document.getElementById('filter-price-min').value);
+            const pmax = parseFloat(document.getElementById('filter-price-max').value);
+            filterState.priceMin = isFinite(pmin) ? pmin : null;
+            filterState.priceMax = isFinite(pmax) ? pmax : null;
+            closeFilters();
+            renderFilteredList();
+            renderActiveFiltersHint();
+        }
+
+        function activeFilterCount() {
+            let n = 0;
+            if (filterState.inStock) n++;
+            if (filterState.priceMin !== null) n++;
+            if (filterState.priceMax !== null) n++;
+            n += filterState.manufacturers.size;
+            return n;
+        }
+
+        function renderActiveFiltersHint() {
+            const box = document.getElementById('active-filters');
+            const n = activeFilterCount();
+            const btn = document.getElementById('filter-btn');
+            if (n === 0) {
+                box.style.display = 'none';
+                btn.style.background = 'var(--teal-light)';
+                btn.textContent = '🔧 Фільтри';
+                return;
+            }
+            const parts = [];
+            if (filterState.inStock) parts.push('в наявності');
+            if (filterState.priceMin !== null) parts.push(`від ${filterState.priceMin}₴`);
+            if (filterState.priceMax !== null) parts.push(`до ${filterState.priceMax}₴`);
+            if (filterState.manufacturers.size) parts.push([...filterState.manufacturers].join(', '));
+            box.innerHTML = `Активні фільтри: <b>${parts.join(' · ')}</b> · <a href="#" onclick="event.preventDefault();resetFilters()" style="color:var(--teal);">скинути</a>`;
+            box.style.display = 'block';
+            btn.style.background = 'var(--teal)';
+            btn.style.color = 'white';
+            btn.textContent = `🔧 Фільтри (${n})`;
+        }
+
+        function filterProducts(items) {
+            if (activeFilterCount() === 0) return items;
+            return items.filter(p => {
+                if (filterState.inStock && p.presence !== 'available') return false;
+                const price = parseFloat(p.price) || 0;
+                if (filterState.priceMin !== null && price < filterState.priceMin) return false;
+                if (filterState.priceMax !== null && price > filterState.priceMax) return false;
+                if (filterState.manufacturers.size > 0) {
+                    const m = extractManufacturer(p.name);
+                    if (!filterState.manufacturers.has(m)) return false;
+                }
+                return true;
+            });
+        }
+
+        function renderFilteredList() {
+            // fullList — заповнюється у loadProducts. Перерендерюємо з фільтрами.
+            if (typeof fullList === 'undefined' || !fullList) return;
+            const filtered = filterProducts(fullList);
+            const container = document.getElementById('products-container');
+            if (!filtered.length) {
+                container.innerHTML = '<div class="state-box"><div class="icon">🔍</div><p>Жодного товару не підходить під фільтри</p>'
+                    + '<button onclick="resetFilters()" style="margin-top:10px;padding:10px 22px;background:var(--teal);color:white;border:none;border-radius:10px;font-size:13px;cursor:pointer;">Скинути фільтри</button></div>';
+                return;
+            }
+            renderProducts(filtered, 'products-container');
+        }
+
+        // --- BULK ADD (масове додавання за артикулами) ---
+        function openBulkAdd() {
+            document.getElementById('bulk-modal').style.display = 'flex';
+            document.getElementById('bulk-result').innerHTML = '';
+            setTimeout(() => document.getElementById('bulk-input').focus(), 100);
+        }
+        function closeBulkAdd() { document.getElementById('bulk-modal').style.display = 'none'; }
+
+        async function submitBulkAdd() {
+            const raw = document.getElementById('bulk-input').value || '';
+            // Парсимо: розбиваємо по нерозділяючих символах, лишаємо цифрові 3-8 знаків
+            const skus = [...new Set(
+                raw.split(/[\s,;\n\r]+/).map(s => s.trim()).filter(s => /^\d{3,8}$/.test(s))
+            )];
+            const resBox = document.getElementById('bulk-result');
+            if (!skus.length) {
+                resBox.innerHTML = '<div style="color:var(--red);">Не знайдено жодного валідного артикулу. Артикули — це числа з 3-8 цифр.</div>';
+                return;
+            }
+            const btn = document.getElementById('bulk-submit');
+            btn.disabled = true;
+            btn.textContent = '⏳ Шукаю товари...';
+            resBox.innerHTML = '<div style="color:var(--text-muted);">Перевіряю ' + skus.length + ' артикулів...</div>';
+
+            try {
+                // Перевикористовуємо існуючий /products/resolve-batch
+                const items = skus.map(s => ({ sku: s }));
+                const res = await fetch(SERVER_URL + '/products/resolve-batch', {
+                    method: 'POST',
+                    headers: { ...H, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ items })
+                });
+                const data = await res.json();
+                const products = data.products || [];
+                let added = 0, notFound = [], outOfStock = [];
+
+                for (const sku of skus) {
+                    const p = products.find(pp => String(pp && pp.sku) === String(sku));
+                    if (!p) { notFound.push(sku); continue; }
+                    const isAvail = p.presence === 'available';
+                    if (!isAvail) { outOfStock.push(sku); }
+                    // Все одно додаємо в кошик (помічений як unavailable якщо немає)
+                    const existing = cart.find(i => String(i.sku) === String(p.sku) || String(i.id) === String(p.id));
+                    if (existing) {
+                        existing.qty += 1;
+                    } else {
+                        cart.push({
+                            id: p.id,
+                            sku: p.sku || sku,
+                            name: p.name || ('Артикул ' + sku),
+                            price: p.price || 0,
+                            qty: 1,
+                            image: p.main_image || '',
+                            unavailable: !isAvail
+                        });
+                    }
+                    added++;
+                }
+                saveCart();
+                updateBadges();
+
+                let summary = `<div style="color:var(--green);font-weight:600;">✅ Додано: ${added}</div>`;
+                if (outOfStock.length) summary += `<div style="color:#a06800;margin-top:4px;">⚠️ Немає в наявності (додано позначеними): ${outOfStock.join(', ')}</div>`;
+                if (notFound.length) summary += `<div style="color:var(--red);margin-top:4px;">❌ Не знайдено: ${notFound.join(', ')}</div>`;
+                resBox.innerHTML = summary;
+                btn.textContent = 'Готово ✓';
+                setTimeout(() => {
+                    closeBulkAdd();
+                    showCart();
+                    btn.disabled = false;
+                    btn.textContent = '🛒 Додати в кошик';
+                }, 1500);
+            } catch (e) {
+                resBox.innerHTML = '<div style="color:var(--red);">Помилка зʼєднання: ' + (e.message || e) + '</div>';
+                btn.disabled = false;
+                btn.textContent = '🛒 Додати в кошик';
+            }
+        }
+
+        // --- RECENTLY VIEWED ---
+        function renderRecentlyViewed() {
+            const wrap = document.getElementById('recently-viewed-wrap');
+            if (!wrap) return;
+            let recent = [];
+            try { recent = JSON.parse(localStorage.getItem('ir_recent_viewed') || '[]'); } catch (e) {}
+            // Показуємо тільки на корені каталогу, і тільки коли є хоча б 2 елементи
+            const isRoot = (!groupStack || groupStack.length === 0);
+            if (!isRoot || recent.length < 2) {
+                wrap.style.display = 'none';
+                return;
+            }
+            let html = '<div class="section-title" style="display:flex;align-items:center;justify-content:space-between;padding-right:14px;">'
+                     + '<span>🕒 Нещодавно переглянуті</span>'
+                     + '<button onclick="clearRecentlyViewed()" style="background:none;border:none;color:var(--text-muted);font-size:11px;cursor:pointer;text-transform:none;letter-spacing:normal;">очистити</button>'
+                     + '</div>';
+            html += '<div class="recent-strip">';
+            for (const r of recent) {
+                const sku = String(r.sku || '').replace(/'/g, "\\'");
+                const onclickAttr = `openDetail(${r.id},'${sku}')`;
+                const imgTag = r.main_image
+                    ? (r.main_image.indexOf('https://iradius.com.ua/') === 0
+                       ? `<img src="${r.main_image}" loading="lazy" onerror="this.outerHTML='<div class=&quot;recent-ph&quot;>🦷</div>'">`
+                       : '<div class="recent-ph">🦷</div>')
+                    : '<div class="recent-ph">🦷</div>';
+                html += `<div class="recent-card" onclick="${onclickAttr}">
+                    ${imgTag}
+                    <div class="recent-name">${(r.name||'').replace(/</g,'&lt;')}</div>
+                    <div class="recent-price">${r.price ? r.price + ' грн' : '—'}</div>
+                </div>`;
+            }
+            html += '</div>';
+            wrap.innerHTML = html;
+            wrap.style.display = 'block';
+        }
+        function clearRecentlyViewed() {
+            try { localStorage.removeItem('ir_recent_viewed'); } catch (e) {}
+            renderRecentlyViewed();
+        }
 
         // --- LOAD PRODUCTS ---
         // --- INFINITE SCROLL стан ---
@@ -1551,6 +2186,19 @@
                 currentProductData = p;
                 if (!p) { document.getElementById('detail-name').textContent = 'Товар не знайдено'; return; }
 
+                // RECENTLY VIEWED: записуємо в localStorage (унікальні по id, останніх 10)
+                try {
+                    let recent = JSON.parse(localStorage.getItem('ir_recent_viewed') || '[]');
+                    recent = recent.filter(r => String(r.id) !== String(p.id));
+                    recent.unshift({
+                        id: p.id, sku: p.sku || '', name: p.name || '',
+                        price: p.price || 0, presence: p.presence || '',
+                        main_image: p.main_image || '', ts: Date.now()
+                    });
+                    recent = recent.slice(0, 10);
+                    localStorage.setItem('ir_recent_viewed', JSON.stringify(recent));
+                } catch (e) {}
+
                 const rawImg = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
                 if (rawImg) {
                     const blobUrl = await loadImageBlob(rawImg);
@@ -1772,6 +2420,14 @@
             const isFav = favorites.some(f => String(f.id) === String(currentProductId));
             btn.innerHTML = heartSVG(isFav);
             btn.classList.toggle('active', isFav);
+            // Синхронізуємо кнопку порівняння теж (показуємо чи додано)
+            const cmpBtn = document.getElementById('btnCompareDetail');
+            if (cmpBtn) {
+                const isCmp = compareList.some(c => String(c.id) === String(currentProductId));
+                cmpBtn.classList.toggle('active', isCmp);
+            }
+            // Синхронізуємо кнопку нагадування
+            updateReminderBtn();
         }
 
         const urlPhone = new URLSearchParams(window.location.search).get('phone') || '';
@@ -1871,7 +2527,10 @@
                         <div style="font-size:15px;font-weight:800;color:var(--teal);">${o.grand_total} грн</div>
                         ${o.tracking_code ? `<a href="#" onclick="openNpTracking('${o.tracking_code}');return false;" style="font-size:11px;color:var(--teal);text-decoration:none;">📦 ${o.tracking_code}</a>` : ''}
                     </div>
-                    <button id="repeat-btn-${o.id}" onclick="repeatOrder(${o.id})" style="margin-top:10px;width:100%;padding:10px;background:var(--teal-light);color:var(--teal-dark);border:1.5px solid var(--teal);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">🔄 Повторити замовлення</button>
+                    <div style="display:flex;gap:8px;margin-top:10px;">
+                        <button id="repeat-btn-${o.id}" onclick="repeatOrder(${o.id})" style="flex:2;padding:10px;background:var(--teal-light);color:var(--teal-dark);border:1.5px solid var(--teal);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">🔄 Повторити</button>
+                        <button onclick="downloadOrderPdf(${o.id})" style="flex:1;padding:10px;background:white;color:var(--teal-dark);border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">📄 PDF</button>
+                    </div>
                 </div>`;
             }
             html += '</div>';
@@ -2384,13 +3043,17 @@
 
             if (!cart.length) {
                 wrap.innerHTML = '<div class="state-box"><div class="icon">🛒</div><p>Кошик порожній</p>' +
-                    '<button onclick="goHome()" style="margin-top:14px;padding:12px 24px;background:var(--teal);color:white;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">Перейти до каталогу</button></div>';
+                    '<button onclick="goHome()" style="margin-top:14px;padding:12px 24px;background:var(--teal);color:white;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">Перейти до каталогу</button>' +
+                    '<button onclick="openBulkAdd()" style="display:block;margin:10px auto 0;padding:10px 22px;background:white;color:var(--teal-dark);border:1.5px solid var(--teal);border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;">📋 Додати списком артикулів</button>' +
+                    '</div>';
                 formWrap.innerHTML = '';
                 return;
             }
 
             let total = 0;
-            let html = '<div class="cart-items">';
+            // Кнопка "Додати списком" над товарами
+            let html = '<div style="padding:12px 14px 0;"><button onclick="openBulkAdd()" style="width:100%;padding:10px;background:var(--bg);color:var(--teal-dark);border:1.5px dashed var(--teal);border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;">📋 Додати ще товари списком артикулів</button></div>';
+            html += '<div class="cart-items">';
             for (const item of cart) {
                 const itemTotal = item.price * item.qty;
                 total += itemTotal;
@@ -2425,9 +3088,25 @@
             }
             html += '</div>';
             const MIN_ORDER = 400;
+            const FREE_SHIPPING = 10000;
             if (total < MIN_ORDER) {
+                const need = MIN_ORDER - total;
                 html += `<div style="margin:10px 14px;padding:12px 14px;background:#fff8e1;border:1.5px solid #ffc107;border-radius:12px;font-size:13px;color:#795548;">
-                    ⚠️ Мінімальна сума замовлення — <b>${MIN_ORDER} грн</b>. Додайте ще товарів на <b>${MIN_ORDER - total} грн</b>.
+                    ⚠️ Мінімальна сума замовлення — <b>${MIN_ORDER} грн</b>. Додайте товарів на <b>${need} грн</b>, щоб виконати мінімум.
+                </div>`;
+            } else if (total >= 9000 && total < FREE_SHIPPING) {
+                // "Підказка" коли клієнт майже дотягнув до безкоштовної доставки
+                const need = FREE_SHIPPING - total;
+                const percent = Math.round((total / FREE_SHIPPING) * 100);
+                html += `<div style="margin:10px 14px;padding:12px 14px;background:var(--green-light);border:1.5px solid var(--green);border-radius:12px;font-size:13px;color:var(--text);">
+                    🚚 До <b>безкоштовної доставки</b> залишилось <b>${need} грн</b>! Додайте ще трохи і не платитимете за пересилку.
+                    <div style="margin-top:8px;height:6px;background:rgba(0,0,0,0.08);border-radius:3px;overflow:hidden;">
+                        <div style="height:100%;width:${percent}%;background:var(--green);transition:width .3s;"></div>
+                    </div>
+                </div>`;
+            } else if (total >= FREE_SHIPPING) {
+                html += `<div style="margin:10px 14px;padding:10px 14px;background:var(--green-light);border:1.5px solid var(--green);border-radius:12px;font-size:13px;color:var(--text);text-align:center;">
+                    ✅ Доставка <b>безкоштовна</b> 🎉
                 </div>`;
             }
             html += '<div class="cart-total"><span class="cart-total-label">Разом:</span><span class="cart-total-price">' + total + ' грн</span></div>';
@@ -2954,6 +3633,8 @@
         // Налаштування — застосовуємо ДО першого рендеру, щоб не блимало
         applyLargeText(localStorage.getItem('ir_large_text') === '1');
         applyDarkTheme(localStorage.getItem('ir_dark_theme') === '1');
+        // Підвантажуємо підписки користувача у фоні (для синхронізації кнопки 🔔)
+        loadMyReminders();
         updateBadges();
         (async () => {
             await loadGroupsFromServer();
