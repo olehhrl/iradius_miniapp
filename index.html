@@ -411,10 +411,10 @@
             <!-- Цінова вилка -->
             <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:10px;">
                 <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">💰 Ціна, грн</div>
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <input type="number" id="filter-price-min" placeholder="Від" style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none;background:var(--white);color:var(--text);">
-                    <span style="color:var(--text-muted);">—</span>
-                    <input type="number" id="filter-price-max" placeholder="До" style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none;background:var(--white);color:var(--text);">
+                <div style="display:flex;align-items:center;gap:8px;width:100%;">
+                    <input type="number" inputmode="numeric" id="filter-price-min" placeholder="Від" style="flex:1 1 0;min-width:0;width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none;background:var(--white);color:var(--text);box-sizing:border-box;">
+                    <span style="color:var(--text-muted);flex-shrink:0;">—</span>
+                    <input type="number" inputmode="numeric" id="filter-price-max" placeholder="До" style="flex:1 1 0;min-width:0;width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none;background:var(--white);color:var(--text);box-sizing:border-box;">
                 </div>
             </div>
 
