@@ -1553,15 +1553,38 @@
             return [...set.entries()].sort((a, b) => b[1] - a[1]);
         }
 
-        function openFilters() {
+        // Якщо завантажено лише першу сторінку — тягнемо всю категорію для повного списку виробників/країн.
+        // Без цього чіпи показували б лише топ-20 із кожної категорії.
+        async function ensureFullCategoryLoaded() {
+            if (!currentGroupId) return;
+            // Уже маємо повний список — нічого робити
+            if (fullList && fullList.length) {
+                if (!loadedProducts.length || loadedProducts.length < fullList.length) {
+                    loadedProducts = fullList.slice();
+                }
+                return;
+            }
+            // Тягнемо весь список з сортуванням по ціні (бекенд віддає full=true для sort=price)
+            try {
+                const url = `${SERVER_URL}/products?limit=300&group_id=${currentGroupId}&sort=price`;
+                const res = await fetch(url, { headers: H });
+                const data = await res.json();
+                const items = data.products || [];
+                // Зберігаємо в loadedProducts (для чіпів). Не чіпаємо fullList щоб не зламати пагінацію.
+                if (items.length > loadedProducts.length) loadedProducts = items;
+            } catch (e) {}
+        }
+
+        async function openFilters() {
+            await ensureFullCategoryLoaded();
             // Заповнюємо UI поточним станом
             document.getElementById('filter-instock').checked = filterState.inStock;
             _syncToggle('filter-instock-slider', 'filter-instock', filterState.inStock);
             document.getElementById('filter-price-min').value = filterState.priceMin || '';
             document.getElementById('filter-price-max').value = filterState.priceMax || '';
 
-            // Чіпи виробників і країн
-            const list = fullList && fullList.length ? fullList : [];
+            // Чіпи виробників і країн — з ВСІХ завантажених у поточну категорію товарів
+            const list = (fullList && fullList.length) ? fullList : (loadedProducts || []);
             const renderChips = (items, wrapId, selectedSet, toggleFn, emptyText) => {
                 const wrap = document.getElementById(wrapId);
                 if (items.length === 0) {
@@ -1674,9 +1697,10 @@
         }
 
         function renderFilteredList() {
-            // fullList — заповнюється у loadProducts. Перерендерюємо з фільтрами.
-            if (typeof fullList === 'undefined' || !fullList) return;
-            const filtered = filterProducts(fullList);
+            // Джерело: fullList (full-режим) або loadedProducts (пагінований)
+            const src = (fullList && fullList.length) ? fullList : (loadedProducts || []);
+            if (!src.length) return;
+            const filtered = filterProducts(src);
             const container = document.getElementById('products-container');
             if (!filtered.length) {
                 container.innerHTML = '<div class="state-box"><div class="icon">🔍</div><p>Жодного товару не підходить під фільтри</p>'
@@ -1811,6 +1835,9 @@
         let isLoadingMore = false;
         let fullList = [];        // повний відсортований список категорії (від сервера)
         let localOffset = 0;      // скільки товарів із fullList уже показано
+        // Накопичувач ВСІХ завантажених товарів поточної категорії (для чіпів фільтрів)
+        // Працює і в full-, і в paginated-режимі.
+        let loadedProducts = [];
 
         async function loadProducts(page, groupId, append = false) {
             if (append && (isLoadingMore || !hasMore)) return;
@@ -1833,6 +1860,7 @@
             hasMore = false;
             fullList = [];
             localOffset = 0;
+            loadedProducts = [];  // скидаємо при новій категорії
             if (scrollObserver) scrollObserver.disconnect();
             showLoading();
             try {
@@ -1846,12 +1874,14 @@
                 if (data.full) {
                     // Сервер віддав весь відсортований список — показуємо першу порцію, решту нарізаємо локально
                     fullList = sortClient(products);
+                    loadedProducts = fullList; // повний список одразу
                     const slice = fullList.slice(0, LIMIT);
                     await renderProducts(slice, 'products-container', false);
                     localOffset = slice.length;
                     hasMore = localOffset < fullList.length;
                 } else {
                     // Звичайний посторінковий режим
+                    loadedProducts = products.slice();
                     await renderProducts(products, 'products-container', false);
                     hasMore = products.length === LIMIT;
                 }
@@ -1873,6 +1903,8 @@
                 const res = await fetch(url, { headers: H });
                 const data = await res.json();
                 const products = data.products || [];
+                // Накопичуємо для чіпів фільтрів
+                loadedProducts = loadedProducts.concat(products);
                 await renderProducts(products, 'products-container', true);
                 hasMore = products.length === LIMIT;
                 ensureSentinel();
