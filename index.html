@@ -387,6 +387,16 @@
         </div>
     </div>
 
+    <!-- LIGHTBOX для фото товару -->
+    <div id="image-lightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:900;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;" onclick="closeImageLightbox()">
+        <div id="lightbox-spinner" style="position:absolute;color:white;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:10px;">
+            <div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></div>
+            <div>Завантажую якісне фото...</div>
+        </div>
+        <img id="lightbox-img" src="" style="max-width:100%;max-height:100%;object-fit:contain;display:none;border-radius:8px;" onclick="event.stopPropagation()">
+        <button onclick="closeImageLightbox()" style="position:absolute;top:14px;right:14px;width:42px;height:42px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:white;font-size:26px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);">✕</button>
+    </div>
+
     <!-- МОДАЛКА ФІЛЬТРІВ -->
     <div id="filters-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:700;align-items:flex-end;justify-content:center;" onclick="closeFilters()">
         <div style="background:var(--white);border-radius:20px 20px 0 0;padding:22px 18px 22px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;" onclick="event.stopPropagation()">
@@ -2159,9 +2169,16 @@
                 const rawImg = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
                 if (rawImg) {
                     const blobUrl = await loadImageBlob(rawImg);
+                    // Повнорозмірне фото = той самий URL без "/small/" (оригінал у MODX)
+                    const fullImg = rawImg.replace('/small/', '/');
+                    const safeEsc = fullImg.replace(/'/g, "\\'");
                     document.getElementById('detail-img-wrap').innerHTML = blobUrl
-                        ? '<img class="detail-img" src="' + blobUrl + '">'
+                        ? '<img class="detail-img" src="' + blobUrl + '" onclick="openImageLightbox(\'' + safeEsc + '\')" style="cursor:zoom-in;">'
                         : '<div class="detail-img-placeholder">🦷</div>';
+                    // Prefetch повнорозмірного у фоні — щоб коли клієнт тапне, було миттєво
+                    if (fullImg && fullImg !== rawImg) {
+                        try { const im = new Image(); im.src = fullImg; } catch (e) {}
+                    }
                 } else {
                     document.getElementById('detail-img-wrap').innerHTML = '<div class="detail-img-placeholder">🦷</div>';
                 }
@@ -3526,6 +3543,32 @@
             t.textContent = msg;
             t.classList.add('show');
             setTimeout(() => t.classList.remove('show'), 2000);
+        }
+
+        // --- LIGHTBOX (повноекранний перегляд фото) ---
+        function openImageLightbox(fullUrl) {
+            if (!fullUrl) return;
+            const box = document.getElementById('image-lightbox');
+            const img = document.getElementById('lightbox-img');
+            const sp = document.getElementById('lightbox-spinner');
+            box.style.display = 'flex';
+            img.style.display = 'none';
+            sp.style.display = 'flex';
+            // Завантажуємо повне фото (як правило вже у браузерному кеші через prefetch)
+            img.onload = () => {
+                sp.style.display = 'none';
+                img.style.display = 'block';
+            };
+            img.onerror = () => {
+                sp.innerHTML = '<div style="color:white;">Не вдалося завантажити повне фото</div>';
+            };
+            img.src = fullUrl;
+            try { Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch(e) {}
+        }
+        function closeImageLightbox() {
+            document.getElementById('image-lightbox').style.display = 'none';
+            const img = document.getElementById('lightbox-img');
+            img.src = '';  // звільняємо памʼять
         }
 
         // --- НАЛАШТУВАННЯ (шестерня) ---
