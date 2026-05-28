@@ -487,13 +487,28 @@
             } catch (e) {}
         }
 
+        // Категорійні PNG в /images/Фото груп/ на сайті по 2-3MB (не оптимізовані).
+        // Гонимо їх через проксі з resize→WebP (~30KB). Товарні фото — /assets/images/products/.../small/
+        // вже маленькі (5-20KB), вантажаться напряму.
+        function isHeavyCategoryImage(u) {
+            return u && u.indexOf('https://iradius.com.ua/images/') === 0;
+        }
+        function fastImageUrl(rawUrl) {
+            if (!rawUrl) return '';
+            if (isHeavyCategoryImage(rawUrl)) {
+                return SERVER_URL + '/image?w=400&url=' + encodeURIComponent(rawUrl);
+            }
+            return rawUrl;
+        }
+
         async function loadImageBlob(rawUrl) {
             if (!rawUrl) return null;
             // Швидкий шлях: фото з iradius.com.ua вантажаться напряму браузером (HTTP/2, паралельно,
             // браузерний HTTP-кеш + CDN-friendly). Не йдемо через ngrok-проксі. Це 5-20× швидше.
-            if (rawUrl.indexOf('https://iradius.com.ua/') === 0) return rawUrl;
-            // Для Prom CDN та інших — через проксі (ngrok-skip + hotlink-фікс).
-            const key = SERVER_URL + '/image?url=' + encodeURIComponent(rawUrl);
+            if (rawUrl.indexOf('https://iradius.com.ua/') === 0 && !isHeavyCategoryImage(rawUrl)) return rawUrl;
+            // Категорійні PNG (2-3MB) → resize до 400px WebP (~30KB) на проксі. Кеш — на диску сервера.
+            const w = isHeavyCategoryImage(rawUrl) ? 400 : 0;
+            const key = SERVER_URL + '/image?' + (w ? 'w=' + w + '&' : '') + 'url=' + encodeURIComponent(rawUrl);
             try {
                 if ('caches' in window) {
                     const cache = await caches.open(IMG_CACHE_NAME);
@@ -672,9 +687,9 @@
                 const hasChildren = allGroups.some(c => c.parent_group_id === g.id);
                 html += '<div class="category-card" onclick="openGroup(' + g.id + ', \'' + name.replace(/'/g, "\\'") + '\', ' + hasChildren + ')" id="cat-' + g.id + '">';
                 html += '<div class="category-img-wrap">';
-                // Швидкий шлях: для iradius-фото відразу <img src> з lazy + async decoding.
-                // Браузер сам кешує, HTTP/2 паралелить — без blob/проксі.
-                if (g.image && g.image.indexOf('https://iradius.com.ua/') === 0) {
+                // Категорійні PNG великі (2-3MB) → через blob-проксі з resize до 400px (~30KB WebP).
+                // Товарні фото (small) — вже малі, не використовуються в категоріях.
+                if (g.image && !isHeavyCategoryImage(g.image)) {
                     html += '<img class="category-img" id="catimg-' + g.id + '" src="' + g.image + '" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">';
                 } else {
                     html += '<div class="category-img-placeholder" id="catimg-' + g.id + '">📦</div>';
@@ -684,8 +699,8 @@
                 html += '</div></div>';
             }
             grid.innerHTML = html;
-            // Тільки для non-iradius (Prom тощо) — все ще проксі через blob.
-            groups.forEach(g => { if (g.image && g.image.indexOf('https://iradius.com.ua/') !== 0) loadCategoryImage(g); });
+            // Великі iradius-PNG + non-iradius — через blob-проксі (resize або hotlink-фікс).
+            groups.forEach(g => { if (g.image && (isHeavyCategoryImage(g.image) || g.image.indexOf('https://iradius.com.ua/') !== 0)) loadCategoryImage(g); });
         }
 
         async function loadCategoryImage(g) {
