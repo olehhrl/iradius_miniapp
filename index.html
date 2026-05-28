@@ -25,6 +25,26 @@
             --shadow: 0 2px 8px rgba(0,164,153,0.10);
             --red: #e74c3c;
         }
+        /* DARK THEME — перевизначаємо змінні; решта стилів використовує var(...) */
+        body.dark {
+            --teal: #00C7B8;
+            --teal-dark: #00A499;
+            --teal-light: #1B2D2C;
+            --green: #5FCA94;
+            --green-light: #1A2620;
+            --white: #1E2024;       /* колір "карток" */
+            --bg: #0F1214;          /* фон сторінки */
+            --text: #E8EBED;
+            --text-muted: #8E9095;
+            --border: #2A2F33;
+            --shadow: 0 2px 8px rgba(0,0,0,0.35);
+        }
+        /* Дрібні донастройки для темної (там де колір зашитий) */
+        body.dark .header { background: #0A1818; }
+        body.dark img { filter: brightness(0.95); }
+        body.dark .toast { background: #2C2F33; }
+        body.dark .skeleton-shimmer { background: linear-gradient(90deg, #2A2F33 0%, #383D42 50%, #2A2F33 100%) !important; }
+
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
         .header { background: var(--teal); color: white; display: flex; flex-direction: column; position: sticky; top: 0; z-index: 200; }
@@ -33,7 +53,8 @@
         .header-row { display: grid; grid-template-columns: 42px 1fr 42px; align-items: center; padding: 0 10px; min-height: 54px; }
         .header-back { grid-column: 1; background: none; border: none; color: white; font-size: 26px; cursor: pointer; display: none; line-height: 1; padding: 0; text-align: left; }
         .header-title { grid-column: 2; font-size: 17px; font-weight: 700; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .header-spacer { grid-column: 3; }
+        .header-settings { grid-column: 3; justify-self: end; background: none; border: none; color: white; cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; opacity: 0.9; }
+        .header-settings:active { opacity: 0.6; transform: rotate(30deg); transition: transform .2s; }
 
         .search-wrap { padding: 0 12px 8px; display: flex; position: relative; }
         .search-wrap input { flex: 1; width: 100%; padding: 8px 14px; border: none; border-radius: 18px; font-size: 13px; background: rgba(255,255,255,.9); outline: none; }
@@ -272,7 +293,9 @@
         <div class="header-row">
             <button class="header-back" id="btnBack" onclick="goBack()">←</button>
             <div class="header-title" id="headerTitle">🦷 IRadius Dental Shop</div>
-            <div class="header-spacer"></div>
+            <button class="header-settings" onclick="openSettings()" title="Налаштування" aria-label="Налаштування">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
         </div>
         <div class="search-wrap" id="searchWrap">
             <input type="text" id="searchInput" placeholder="🔍 Пошук товарів...">
@@ -282,16 +305,6 @@
     <!-- CATALOG -->
     <div class="content" id="page-main">
         <div id="breadcrumb-wrap"></div>
-        <!-- Перемикач "Великий шрифт" — accessibility прямо на головній -->
-        <div id="large-text-row" style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:8px 14px 0;">
-            <span style="font-size:12px;color:var(--text-muted);">🔍 Великий шрифт</span>
-            <label style="position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0;cursor:pointer;">
-                <input type="checkbox" id="toggle-large-text" onchange="toggleLargeText(this.checked)" style="opacity:0;width:0;height:0;">
-                <span id="toggle-large-slider" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.2s;">
-                    <span style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
-                </span>
-            </label>
-        </div>
         <div class="section-title" id="catalog-title">Категорії</div>
         <div class="categories-grid" id="categories-grid">
             <div style="grid-column:1/-1" class="state-box"><div class="spinner"></div></div>
@@ -347,6 +360,50 @@
         </div>
         <div class="detail-actions">
             <button class="btn-cart-detail" style="width:100%" onclick="addToCart()">🛒 Додати в кошик</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА НАЛАШТУВАНЬ -->
+    <div id="settings-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:700;align-items:flex-end;justify-content:center;" onclick="closeSettings()">
+        <div style="background:var(--white);border-radius:20px 20px 0 0;padding:22px 18px 22px;width:100%;max-width:480px;" onclick="event.stopPropagation()">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+                <div style="font-size:18px;font-weight:800;color:var(--text);">⚙️ Налаштування</div>
+                <button onclick="closeSettings()" style="background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;line-height:1;padding:0 4px;">✕</button>
+            </div>
+
+            <!-- Великий шрифт -->
+            <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <div>
+                        <div style="font-size:14px;font-weight:700;color:var(--text);">🔍 Великий шрифт</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Збільшує текст і кнопки. 2 категорії в ряд.</div>
+                    </div>
+                    <label style="position:relative;display:inline-block;width:50px;height:28px;flex-shrink:0;cursor:pointer;">
+                        <input type="checkbox" id="toggle-large-text" onchange="toggleLargeText(this.checked)" style="opacity:0;width:0;height:0;">
+                        <span id="toggle-large-slider" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:28px;transition:.2s;">
+                            <span style="position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Темна тема -->
+            <div style="background:var(--bg);border-radius:12px;padding:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <div>
+                        <div style="font-size:14px;font-weight:700;color:var(--text);">🌙 Темна тема</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Менше навантаження на очі, особливо ввечері.</div>
+                    </div>
+                    <label style="position:relative;display:inline-block;width:50px;height:28px;flex-shrink:0;cursor:pointer;">
+                        <input type="checkbox" id="toggle-dark-theme" onchange="toggleDarkTheme(this.checked)" style="opacity:0;width:0;height:0;">
+                        <span id="toggle-dark-slider" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:28px;transition:.2s;">
+                            <span style="position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <div style="text-align:center;margin-top:14px;font-size:11px;color:var(--text-muted);">v25.05-AH</div>
         </div>
     </div>
 
@@ -588,22 +645,12 @@
 
         // --- PAGES ---
         const pages = ['page-main','page-products','page-detail','page-popular','page-favorites','page-cart','page-profile'];
-        function updateLargeTextRowVisibility() {
-            // Перемикач "Великий шрифт" показуємо ТІЛЬКИ на стартовій (корінь каталогу).
-            const row = document.getElementById('large-text-row');
-            if (!row) return;
-            const isRoot = (typeof groupStack === 'undefined' || groupStack.length === 0);
-            const isMain = document.getElementById('page-main').style.display !== 'none';
-            row.style.display = (isRoot && isMain) ? 'flex' : 'none';
-        }
-
         function showPage(name) {
             pages.forEach(id => document.getElementById(id).style.display = 'none');
             document.getElementById('page-' + name).style.display = 'block';
             syncBackButton(name === 'main');
             // Пошуковий рядок тільки на каталозі та результатах пошуку
             toggleSearchBar(name === 'main' || name === 'products');
-            updateLargeTextRowVisibility();
         }
 
         function setNav(active) {
@@ -636,7 +683,6 @@
             renderGroups(getRootGroups());
             renderBreadcrumb();
             setNav('nav-catalog');
-            updateLargeTextRowVisibility();
         }
 
         function goBack() {
@@ -2846,17 +2892,31 @@
             setTimeout(() => t.classList.remove('show'), 2000);
         }
 
-        // --- ACCESSIBILITY: великий шрифт ---
-        function applyLargeText(on) {
-            document.body.classList.toggle('large-text', !!on);
-            const slider = document.getElementById('toggle-large-slider');
+        // --- НАЛАШТУВАННЯ (шестерня) ---
+        function openSettings() {
+            document.getElementById('settings-modal').style.display = 'flex';
+            try { Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch(e) {}
+        }
+        function closeSettings() {
+            document.getElementById('settings-modal').style.display = 'none';
+        }
+
+        // Універсальна функція оновлення вигляду тумблера
+        function _syncToggle(sliderId, checkboxId, on) {
+            const slider = document.getElementById(sliderId);
             if (slider) {
                 slider.style.background = on ? 'var(--teal)' : '#ccc';
                 const dot = slider.firstElementChild;
                 if (dot) dot.style.transform = on ? 'translateX(22px)' : 'translateX(0)';
             }
-            const checkbox = document.getElementById('toggle-large-text');
+            const checkbox = document.getElementById(checkboxId);
             if (checkbox) checkbox.checked = !!on;
+        }
+
+        // --- ВЕЛИКИЙ ШРИФТ ---
+        function applyLargeText(on) {
+            document.body.classList.toggle('large-text', !!on);
+            _syncToggle('toggle-large-slider', 'toggle-large-text', on);
         }
         function toggleLargeText(on) {
             localStorage.setItem('ir_large_text', on ? '1' : '0');
@@ -2870,9 +2930,30 @@
             try { Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch(e) {}
         }
 
+        // --- ТЕМНА ТЕМА ---
+        function applyDarkTheme(on) {
+            document.body.classList.toggle('dark', !!on);
+            _syncToggle('toggle-dark-slider', 'toggle-dark-theme', on);
+            // Telegram WebApp header color — щоб не "виглядав" зі статус-бару
+            try {
+                if (window.Telegram && Telegram.WebApp && Telegram.WebApp.setHeaderColor) {
+                    Telegram.WebApp.setHeaderColor(on ? '#0A1818' : '#00A499');
+                }
+                if (window.Telegram && Telegram.WebApp && Telegram.WebApp.setBackgroundColor) {
+                    Telegram.WebApp.setBackgroundColor(on ? '#0F1214' : '#F0F9F8');
+                }
+            } catch (e) {}
+        }
+        function toggleDarkTheme(on) {
+            localStorage.setItem('ir_dark_theme', on ? '1' : '0');
+            applyDarkTheme(on);
+            try { Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch(e) {}
+        }
+
         // --- INIT ---
-        // Великий шрифт — застосовуємо ДО першого рендеру, щоб не блимало
+        // Налаштування — застосовуємо ДО першого рендеру, щоб не блимало
         applyLargeText(localStorage.getItem('ir_large_text') === '1');
+        applyDarkTheme(localStorage.getItem('ir_dark_theme') === '1');
         updateBadges();
         (async () => {
             await loadGroupsFromServer();
