@@ -168,6 +168,11 @@
         .btn-fav-detail.active { border-color: var(--red); background: #fff0f0; color: var(--red); }
         #btnCompareDetail.active { border-color: var(--teal); background: var(--teal-light); }
         #btnCompareDetail.active svg { stroke: var(--teal); }
+        /* ⚖️ Кнопка "Порівняти" на тайлі товару — у верхньому правому куті фото */
+        .tile-compare-btn { position: absolute; top: 6px; right: 6px; z-index: 5; width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--border); background: rgba(255,255,255,0.92); color: var(--text-muted); cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: all .15s; }
+        .tile-compare-btn:active { transform: scale(0.92); }
+        .tile-compare-btn.active { border-color: var(--teal); background: var(--teal); color: white; }
+        body.dark .tile-compare-btn { background: rgba(30,32,36,0.92); }
         .btn-fav-detail svg { width: 19px; height: 19px; display: block; }
         .btn-cart-detail { flex: 1; padding: 14px; background: var(--teal); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; }
 
@@ -337,12 +342,12 @@
     <!-- PRODUCTS -->
     <div id="page-products" style="display:none; padding-bottom:70px;">
         <div class="sort-bar" id="sort-bar">
+            <button class="sort-btn" id="filter-btn" onclick="openFilters()" style="background:var(--teal-light);color:var(--teal-dark);font-weight:700;">🔧 Фільтри</button>
             <button class="sort-btn active" id="sort-date" onclick="setSort('date', this)">🆕 Новинки</button>
             <button class="sort-btn" id="sort-cheap" onclick="setSort('price', this)">💰 Дешевші</button>
             <button class="sort-btn" id="sort-expensive" onclick="setSort('-price', this)">💎 Дорожчі</button>
             <button class="sort-btn" id="sort-popular" onclick="setSort('popularity', this)">🔥 Популярні</button>
             <button class="sort-btn" id="sort-name" onclick="toggleNameSort(this)">🔤 А–Я</button>
-            <button class="sort-btn" id="filter-btn" onclick="openFilters()" style="margin-left:auto;background:var(--teal-light);color:var(--teal-dark);">🔧 Фільтри</button>
         </div>
         <div id="active-filters" style="display:none;padding:6px 14px 0;font-size:11px;color:var(--text-muted);"></div>
         <div id="products-container"></div>
@@ -368,7 +373,7 @@
                     </button>
                     <button class="btn-fav-detail" id="btnFavDetail" onclick="toggleFavorite()"><svg class="heart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
                     <button class="btn-fav-detail" id="btnCompareDetail" onclick="toggleCompareFromDetail()" title="Додати до порівняння" style="background:white;border:1.5px solid var(--border);border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">
-                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--teal-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v18H3V3zM14 3h7v18h-7V3z"/></svg>
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--teal-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 9h18"/><path d="M6 9l-3 7a3 3 0 0 0 6 0z"/><path d="M18 9l-3 7a3 3 0 0 0 6 0z"/></svg>
                     </button>
                     <div class="detail-presence-badge" id="detail-presence"></div>
                 </div>
@@ -443,6 +448,14 @@
             <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:10px;">
                 <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">🏭 Виробник</div>
                 <div id="filter-manufacturers" style="display:flex;flex-wrap:wrap;gap:6px;max-height:180px;overflow-y:auto;">
+                    <!-- chips заповнюються динамічно -->
+                </div>
+            </div>
+
+            <!-- Країна -->
+            <div style="background:var(--bg);border-radius:12px;padding:14px;margin-bottom:10px;">
+                <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">🌍 Країна</div>
+                <div id="filter-countries" style="display:flex;flex-wrap:wrap;gap:6px;max-height:140px;overflow-y:auto;">
                     <!-- chips заповнюються динамічно -->
                 </div>
             </div>
@@ -1051,6 +1064,7 @@
                 filterState.priceMin = null;
                 filterState.priceMax = null;
                 filterState.manufacturers.clear();
+                filterState.countries.clear();
                 renderActiveFiltersHint();
             }
             loadProducts(1, groupId);
@@ -1371,6 +1385,18 @@
             if (!p) return;
             const btn = document.getElementById('btnCompareDetail');
             toggleCompare(p.id, p.sku || '', p.name, p.price || 0, p.presence || '', p.main_image || '', btn);
+            // Синхронізуємо кнопку на тайлі цього товару (якщо рендериться)
+            const tileBtn = document.getElementById('cmp-tile-' + p.id);
+            if (tileBtn) tileBtn.classList.toggle('active', compareList.some(c => String(c.id) === String(p.id)));
+        }
+
+        function toggleCompareFromTile(id, sku, name, price, presence, image, btn) {
+            toggleCompare(id, sku, name, price, presence, image, btn);
+            // Якщо ми зараз на картці цього ж товару — оновити кнопку там
+            if (String(currentProductId) === String(id)) {
+                const dBtn = document.getElementById('btnCompareDetail');
+                if (dBtn) dBtn.classList.toggle('active', compareList.some(c => String(c.id) === String(id)));
+            }
         }
 
         function toggleCompare(id, sku, name, price, presence, image, btn) {
@@ -1435,7 +1461,8 @@
                 const imgTag = (rawImg && rawImg.indexOf('https://iradius.com.ua/') === 0)
                     ? `<img src="${rawImg}" style="width:100%;height:80px;object-fit:contain;background:var(--bg);border-radius:8px;">`
                     : `<div style="width:100%;height:80px;background:var(--bg);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px;">🦷</div>`;
-                const m = extractManufacturer(it.name) || '—';
+                const m = extractManufacturer(it) || '—';
+                const country = (it.country || '').trim();
                 const desc = (it.description || '').replace(/<[^>]+>/g, '').slice(0, 180);
                 const isAvail = it.presence === 'available';
                 return `<div style="flex:0 0 180px;background:var(--bg);border-radius:10px;padding:10px;">
@@ -1444,7 +1471,8 @@
                     <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Арт: ${it.sku || '—'}</div>
                     <div style="font-size:15px;font-weight:800;color:var(--teal);margin-top:6px;">${it.price ? it.price + ' грн' : '—'}</div>
                     <div style="font-size:11px;margin-top:4px;color:${isAvail ? 'var(--green)' : 'var(--red)'};">${isAvail ? '✅ В наявності' : '❌ Немає'}</div>
-                    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">${m}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">🏭 ${m}</div>
+                    ${country ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">🌍 ${country}</div>` : ''}
                     <div style="font-size:10px;color:var(--text-muted);margin-top:6px;line-height:1.4;max-height:80px;overflow:hidden;">${desc}${desc.length >= 180 ? '...' : ''}</div>
                     <button onclick="removeFromCompare(${it.id})" style="margin-top:8px;width:100%;padding:6px;background:white;color:var(--text-muted);border:1px solid var(--border);border-radius:8px;font-size:11px;cursor:pointer;">Видалити</button>
                 </div>`;
@@ -1479,26 +1507,40 @@
             priceMin: null,
             priceMax: null,
             manufacturers: new Set(),  // обрані виробники
+            countries: new Set(),       // обрані країни
         };
 
-        // Витягуємо виробника з назви: текст у дужках наприкінці типу "(Heraeus Kulzer)"
-        function extractManufacturer(name) {
-            if (!name) return '';
-            const m = name.match(/\(([^)]+)\)\s*$/);
-            if (!m) return '';
-            // Фільтруємо короткі/числові — це не виробник
-            const v = m[1].trim();
-            if (v.length < 3 || /^\d+$/.test(v)) return '';
-            return v;
+        // Виробник з прямого поля з MODX (LEFT JOIN modx_ms2_vendors). Фолбек: з назви в дужках.
+        function extractManufacturer(item) {
+            if (typeof item === 'string') {
+                // Старий API сумісність — приймає просто name
+                const m = item.match(/\(([^)]+)\)\s*$/);
+                if (!m) return '';
+                const v = m[1].trim();
+                if (v.length < 3 || /^\d+$/.test(v)) return '';
+                return v;
+            }
+            if (item && item.vendor) return item.vendor.trim();
+            // Фолбек на ім'я
+            if (item && item.name) return extractManufacturer(item.name);
+            return '';
         }
 
         function getUniqueManufacturers(items) {
             const set = new Map(); // manufacturer → count
             for (const it of items) {
-                const m = extractManufacturer(it.name);
+                const m = extractManufacturer(it);
                 if (m) set.set(m, (set.get(m) || 0) + 1);
             }
-            // Сортуємо за частотою (топ-виробники зверху)
+            return [...set.entries()].sort((a, b) => b[1] - a[1]);
+        }
+
+        function getUniqueCountries(items) {
+            const set = new Map();
+            for (const it of items) {
+                const c = (it.country || '').trim();
+                if (c) set.set(c, (set.get(c) || 0) + 1);
+            }
             return [...set.entries()].sort((a, b) => b[1] - a[1]);
         }
 
@@ -1509,23 +1551,26 @@
             document.getElementById('filter-price-min').value = filterState.priceMin || '';
             document.getElementById('filter-price-max').value = filterState.priceMax || '';
 
-            // Чіпи виробників
+            // Чіпи виробників і країн
             const list = fullList && fullList.length ? fullList : [];
-            const manus = getUniqueManufacturers(list);
-            const chipsWrap = document.getElementById('filter-manufacturers');
-            if (manus.length === 0) {
-                chipsWrap.innerHTML = '<div style="color:var(--text-muted);font-size:12px;">У цій категорії виробник не вказаний</div>';
-            } else {
-                chipsWrap.innerHTML = manus.map(([m, count]) => {
-                    const active = filterState.manufacturers.has(m);
+            const renderChips = (items, wrapId, selectedSet, toggleFn, emptyText) => {
+                const wrap = document.getElementById(wrapId);
+                if (items.length === 0) {
+                    wrap.innerHTML = `<div style="color:var(--text-muted);font-size:12px;">${emptyText}</div>`;
+                    return;
+                }
+                wrap.innerHTML = items.map(([m, count]) => {
+                    const active = selectedSet.has(m);
                     const escaped = m.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-                    return `<button onclick="toggleManufacturer('${escaped}')"
+                    return `<button onclick="${toggleFn}('${escaped}')"
                         style="padding:7px 11px;border:1.5px solid ${active ? 'var(--teal)' : 'var(--border)'};
                                background:${active ? 'var(--teal)' : 'var(--white)'};color:${active ? 'white' : 'var(--text)'};
                                border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;">
                         ${m} <span style="opacity:0.7;font-weight:400;">${count}</span></button>`;
                 }).join('');
-            }
+            };
+            renderChips(getUniqueManufacturers(list), 'filter-manufacturers', filterState.manufacturers, 'toggleManufacturer', 'У цій категорії виробник не вказаний');
+            renderChips(getUniqueCountries(list), 'filter-countries', filterState.countries, 'toggleCountry', 'У цій категорії країна не вказана');
 
             // Слухач toggle для in-stock
             const cbIn = document.getElementById('filter-instock');
@@ -1540,12 +1585,18 @@
             else filterState.manufacturers.add(m);
             openFilters(); // re-render chips
         }
+        function toggleCountry(c) {
+            if (filterState.countries.has(c)) filterState.countries.delete(c);
+            else filterState.countries.add(c);
+            openFilters();
+        }
 
         function resetFilters() {
             filterState.inStock = false;
             filterState.priceMin = null;
             filterState.priceMax = null;
             filterState.manufacturers.clear();
+            filterState.countries.clear();
             applyFilters();
         }
 
@@ -1567,6 +1618,7 @@
             if (filterState.priceMin !== null) n++;
             if (filterState.priceMax !== null) n++;
             n += filterState.manufacturers.size;
+            n += filterState.countries.size;
             return n;
         }
 
@@ -1585,6 +1637,7 @@
             if (filterState.priceMin !== null) parts.push(`від ${filterState.priceMin}₴`);
             if (filterState.priceMax !== null) parts.push(`до ${filterState.priceMax}₴`);
             if (filterState.manufacturers.size) parts.push([...filterState.manufacturers].join(', '));
+            if (filterState.countries.size) parts.push([...filterState.countries].join(', '));
             box.innerHTML = `Активні фільтри: <b>${parts.join(' · ')}</b> · <a href="#" onclick="event.preventDefault();resetFilters()" style="color:var(--teal);">скинути</a>`;
             box.style.display = 'block';
             btn.style.background = 'var(--teal)';
@@ -1600,8 +1653,12 @@
                 if (filterState.priceMin !== null && price < filterState.priceMin) return false;
                 if (filterState.priceMax !== null && price > filterState.priceMax) return false;
                 if (filterState.manufacturers.size > 0) {
-                    const m = extractManufacturer(p.name);
+                    const m = extractManufacturer(p);
                     if (!filterState.manufacturers.has(m)) return false;
+                }
+                if (filterState.countries.size > 0) {
+                    const c = (p.country || '').trim();
+                    if (!filterState.countries.has(c)) return false;
                 }
                 return true;
             });
@@ -1893,6 +1950,14 @@
             } else {
                 html += '<div class="tile-img-placeholder" id="img-' + p.id + '">🦷</div>';
             }
+            // ⚖️ Кнопка "Порівняти" — у правому верхньому куті тайла, без переходу в картку
+            const isCmp = compareList.some(c => String(c.id) === String(p.id));
+            html += '<button class="tile-compare-btn ' + (isCmp ? 'active' : '') + '" id="cmp-tile-' + p.id + '" title="Порівняти" onclick="event.stopPropagation();toggleCompareFromTile(' + p.id + ',\'' + (p.sku || '') + '\',\'' + nameEsc + '\',' + (price||0) + ',\'' + (p.presence||'') + '\',\'' + imgEsc + '\',this)">'
+                + '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+                + '<path d="M12 3v18M3 9h18"/>'    // вертикальна вісь + горизонтальна перекладина ваг
+                + '<path d="M6 9l-3 7a3 3 0 0 0 6 0z"/>'  // ліва чаша
+                + '<path d="M18 9l-3 7a3 3 0 0 0 6 0z"/>' // права чаша
+                + '</svg></button>';
             html += '</div>';
             html += '<div class="tile-body">';
             html += '<div class="tile-name">' + (p.name || '—') + '</div>';
