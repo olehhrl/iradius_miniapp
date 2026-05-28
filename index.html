@@ -3546,7 +3546,7 @@
         }
 
         // --- LIGHTBOX (повноекранний перегляд фото) ---
-        function openImageLightbox(fullUrl) {
+        async function openImageLightbox(fullUrl) {
             if (!fullUrl) return;
             const box = document.getElementById('image-lightbox');
             const img = document.getElementById('lightbox-img');
@@ -3554,21 +3554,41 @@
             box.style.display = 'flex';
             img.style.display = 'none';
             sp.style.display = 'flex';
-            // Завантажуємо повне фото (як правило вже у браузерному кеші через prefetch)
-            img.onload = () => {
-                sp.style.display = 'none';
-                img.style.display = 'block';
+            sp.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></div><div style="color:white;font-size:13px;margin-top:10px;">Завантажую якісне фото...</div>';
+            try { Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch(e) {}
+
+            // 1) Спробуємо ПРЯМО для iradius (HTTP/2, кеш)
+            // 2) Якщо не iradius або не вдалось — через проксі-blob
+            const showImage = (src) => {
+                img.onload = () => { sp.style.display = 'none'; img.style.display = 'block'; };
+                img.onerror = null;
+                img.src = src;
             };
-            img.onerror = () => {
+
+            const tryFallback = async () => {
+                try {
+                    const blob = await loadImageBlob(fullUrl);
+                    if (blob) { showImage(blob); return; }
+                } catch (e) {}
                 sp.innerHTML = '<div style="color:white;">Не вдалося завантажити повне фото</div>';
             };
-            img.src = fullUrl;
-            try { Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch(e) {}
+
+            if (fullUrl.indexOf('https://iradius.com.ua/') === 0) {
+                // Прямий шлях. Якщо не завантажиться — підемо через проксі.
+                img.onload = () => { sp.style.display = 'none'; img.style.display = 'block'; };
+                img.onerror = () => { tryFallback(); };
+                img.src = fullUrl;
+            } else {
+                // Не iradius — одразу через проксі (Prom тощо)
+                await tryFallback();
+            }
         }
         function closeImageLightbox() {
             document.getElementById('image-lightbox').style.display = 'none';
             const img = document.getElementById('lightbox-img');
-            img.src = '';  // звільняємо памʼять
+            img.onload = null;
+            img.onerror = null;
+            img.src = '';
         }
 
         // --- НАЛАШТУВАННЯ (шестерня) ---
