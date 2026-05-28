@@ -1235,9 +1235,18 @@
                 setNav('nav-catalog');
                 hidePagination();
                 searchProducts(q);
+                // iOS: знімаємо клавіатуру щоб не закривала результати
+                try { document.getElementById('searchInput').blur(); } catch (err) {}
             }, 400);
         });
-        document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(searchTimer); doSearch(); } });
+        document.getElementById('searchInput').addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                clearTimeout(searchTimer);
+                // На iOS клавіатура висить поки поле має фокус — знімаємо явно.
+                try { e.target.blur(); } catch (err) {}
+                doSearch();
+            }
+        });
 
         // --- VOICE SEARCH (Web Speech API) ---
         let voiceRecognition = null;
