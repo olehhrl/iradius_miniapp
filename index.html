@@ -166,13 +166,6 @@
         .detail-actions { position: fixed; bottom: 60px; left: 0; right: 0; background: var(--white); border-top: 1px solid var(--border); padding: 12px 16px; display: flex; gap: 10px; align-items: center; }
         .btn-fav-detail { width: 36px; height: 36px; border-radius: 50%; border: 2px solid #ddd; background: white; color: #b8c0c4; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.1); padding: 0; }
         .btn-fav-detail.active { border-color: var(--red); background: #fff0f0; color: var(--red); }
-        #btnCompareDetail.active { border-color: var(--teal); background: var(--teal-light); }
-        #btnCompareDetail.active svg { stroke: var(--teal); }
-        /* ⚖️ Кнопка "Порівняти" на тайлі товару — у верхньому правому куті фото */
-        .tile-compare-btn { position: absolute; top: 6px; right: 6px; z-index: 5; width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--border); background: rgba(255,255,255,0.92); color: var(--text-muted); cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); transition: all .15s; }
-        .tile-compare-btn:active { transform: scale(0.92); }
-        .tile-compare-btn.active { border-color: var(--teal); background: var(--teal); color: white; }
-        body.dark .tile-compare-btn { background: rgba(30,32,36,0.92); }
         .btn-fav-detail svg { width: 19px; height: 19px; display: block; }
         .btn-cart-detail { flex: 1; padding: 14px; background: var(--teal); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; }
 
@@ -372,9 +365,6 @@
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--teal-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                     </button>
                     <button class="btn-fav-detail" id="btnFavDetail" onclick="toggleFavorite()"><svg class="heart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
-                    <button class="btn-fav-detail" id="btnCompareDetail" onclick="toggleCompareFromDetail()" title="Додати до порівняння" style="background:white;border:1.5px solid var(--border);border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;">
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--teal-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 9h18"/><path d="M6 9l-3 7a3 3 0 0 0 6 0z"/><path d="M18 9l-3 7a3 3 0 0 0 6 0z"/></svg>
-                    </button>
                     <div class="detail-presence-badge" id="detail-presence"></div>
                 </div>
             </div>
@@ -395,22 +385,6 @@
         <div class="detail-actions">
             <button class="btn-cart-detail" style="width:100%" onclick="addToCart()">🛒 Додати в кошик</button>
         </div>
-    </div>
-
-    <!-- МОДАЛКА ПОРІВНЯННЯ -->
-    <div id="compare-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:700;align-items:flex-end;justify-content:center;" onclick="closeCompare()">
-        <div style="background:var(--white);border-radius:20px 20px 0 0;padding:18px 14px;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;" onclick="event.stopPropagation()">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                <div style="font-size:17px;font-weight:800;color:var(--text);">⚖️ Порівняння</div>
-                <button onclick="closeCompare()" style="background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;line-height:1;padding:0 4px;">✕</button>
-            </div>
-            <div id="compare-content"></div>
-        </div>
-    </div>
-
-    <!-- Плаваюча кнопка "Порівняти" коли є вибрані товари -->
-    <div id="compare-fab" style="display:none;position:fixed;bottom:78px;right:14px;z-index:300;background:var(--teal);color:white;padding:10px 14px;border-radius:24px;box-shadow:0 4px 12px rgba(0,0,0,0.18);cursor:pointer;font-size:13px;font-weight:700;display:none;align-items:center;gap:6px;" onclick="openCompare()">
-        ⚖️ Порівняти <span id="compare-fab-count" style="background:white;color:var(--teal-dark);padding:1px 7px;border-radius:10px;font-size:11px;">0</span>
     </div>
 
     <!-- МОДАЛКА ФІЛЬТРІВ -->
@@ -1395,130 +1369,6 @@
             }
         }
 
-        // --- COMPARE (порівняння товарів) ---
-        let compareList = []; // [{id, sku, name, price, presence, main_image, description}]
-        const COMPARE_MAX = 3;
-
-        function toggleCompareFromDetail() {
-            const p = currentProductData;
-            if (!p) return;
-            const btn = document.getElementById('btnCompareDetail');
-            toggleCompare(p.id, p.sku || '', p.name, p.price || 0, p.presence || '', p.main_image || '', btn);
-            // Синхронізуємо кнопку на тайлі цього товару (якщо рендериться)
-            const tileBtn = document.getElementById('cmp-tile-' + p.id);
-            if (tileBtn) tileBtn.classList.toggle('active', compareList.some(c => String(c.id) === String(p.id)));
-        }
-
-        function toggleCompareFromTile(id, sku, name, price, presence, image, btn) {
-            toggleCompare(id, sku, name, price, presence, image, btn);
-            // Якщо ми зараз на картці цього ж товару — оновити кнопку там
-            if (String(currentProductId) === String(id)) {
-                const dBtn = document.getElementById('btnCompareDetail');
-                if (dBtn) dBtn.classList.toggle('active', compareList.some(c => String(c.id) === String(id)));
-            }
-        }
-
-        function toggleCompare(id, sku, name, price, presence, image, btn) {
-            const idx = compareList.findIndex(c => String(c.id) === String(id));
-            if (idx >= 0) {
-                compareList.splice(idx, 1);
-                if (btn) btn.classList.remove('active');
-                showToast('Видалено з порівняння');
-            } else {
-                if (compareList.length >= COMPARE_MAX) {
-                    showToast(`Не більше ${COMPARE_MAX} товарів одночасно`);
-                    return;
-                }
-                compareList.push({ id, sku, name, price, presence, main_image: image });
-                if (btn) btn.classList.add('active');
-                showToast(`Додано до порівняння (${compareList.length}/${COMPARE_MAX})`);
-            }
-            updateCompareFab();
-            try { Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch(e) {}
-        }
-
-        function updateCompareFab() {
-            const fab = document.getElementById('compare-fab');
-            const cnt = document.getElementById('compare-fab-count');
-            if (compareList.length >= 2) {
-                fab.style.display = 'inline-flex';
-                cnt.textContent = compareList.length;
-            } else {
-                fab.style.display = 'none';
-            }
-        }
-
-        async function openCompare() {
-            const modal = document.getElementById('compare-modal');
-            const content = document.getElementById('compare-content');
-            content.innerHTML = '<div class="state-box"><div class="spinner"></div></div>';
-            modal.style.display = 'flex';
-            // Тягнемо повні картки для кожного, щоб мати опис
-            const full = await Promise.all(compareList.map(async c => {
-                try {
-                    const url = c.sku ? `${SERVER_URL}/products/sku/${c.sku}` : `${SERVER_URL}/products/${c.id}`;
-                    const r = await fetch(url, { headers: H });
-                    const d = await r.json();
-                    return d.product || c;
-                } catch (e) { return c; }
-            }));
-            renderCompareContent(full);
-        }
-
-        function closeCompare() { document.getElementById('compare-modal').style.display = 'none'; }
-
-        function renderCompareContent(items) {
-            const content = document.getElementById('compare-content');
-            if (!items.length) {
-                content.innerHTML = '<div class="state-box"><p>Немає товарів для порівняння</p></div>';
-                return;
-            }
-            // Горизонтальний скрол з колонками
-            const cols = items.map(it => {
-                const sku = String(it.sku || '').replace(/'/g, "\\'");
-                const rawImg = it.main_image || '';
-                const imgTag = (rawImg && rawImg.indexOf('https://iradius.com.ua/') === 0)
-                    ? `<img src="${rawImg}" style="width:100%;height:80px;object-fit:contain;background:var(--bg);border-radius:8px;">`
-                    : `<div style="width:100%;height:80px;background:var(--bg);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px;">🦷</div>`;
-                const m = extractManufacturer(it) || '—';
-                const country = (it.country || '').trim();
-                const desc = (it.description || '').replace(/<[^>]+>/g, '').slice(0, 180);
-                const isAvail = it.presence === 'available';
-                return `<div style="flex:0 0 180px;background:var(--bg);border-radius:10px;padding:10px;">
-                    ${imgTag}
-                    <div style="font-size:12px;font-weight:700;color:var(--text);margin-top:8px;line-height:1.3;min-height:44px;cursor:pointer;" onclick="closeCompare();openDetail(${it.id},'${sku}')">${(it.name||'').slice(0,80)}</div>
-                    <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Арт: ${it.sku || '—'}</div>
-                    <div style="font-size:15px;font-weight:800;color:var(--teal);margin-top:6px;">${it.price ? it.price + ' грн' : '—'}</div>
-                    <div style="font-size:11px;margin-top:4px;color:${isAvail ? 'var(--green)' : 'var(--red)'};">${isAvail ? '✅ В наявності' : '❌ Немає'}</div>
-                    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">🏭 ${m}</div>
-                    ${country ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">🌍 ${country}</div>` : ''}
-                    <div style="font-size:10px;color:var(--text-muted);margin-top:6px;line-height:1.4;max-height:80px;overflow:hidden;">${desc}${desc.length >= 180 ? '...' : ''}</div>
-                    <button onclick="removeFromCompare(${it.id})" style="margin-top:8px;width:100%;padding:6px;background:white;color:var(--text-muted);border:1px solid var(--border);border-radius:8px;font-size:11px;cursor:pointer;">Видалити</button>
-                </div>`;
-            }).join('');
-            content.innerHTML = `<div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;">${cols}</div>
-                <button onclick="clearCompare()" style="margin-top:14px;width:100%;padding:10px;background:white;color:var(--text-muted);border:1.5px solid var(--border);border-radius:10px;font-size:12px;cursor:pointer;">🗑 Очистити порівняння</button>`;
-        }
-
-        function removeFromCompare(id) {
-            compareList = compareList.filter(c => String(c.id) !== String(id));
-            // Знімаємо позначку з відповідної кнопки в каталозі
-            const btn = document.getElementById('cmp-' + id);
-            if (btn) btn.classList.remove('active');
-            updateCompareFab();
-            if (compareList.length < 2) { closeCompare(); return; }
-            openCompare();
-        }
-        function clearCompare() {
-            compareList.forEach(c => {
-                const btn = document.getElementById('cmp-' + c.id);
-                if (btn) btn.classList.remove('active');
-            });
-            compareList = [];
-            updateCompareFab();
-            closeCompare();
-        }
-
         // --- FILTERS ---
         // Стан фільтрів — окремо від UI, застосовується до fullList.
         const filterState = {
@@ -1529,19 +1379,11 @@
             countries: new Set(),       // обрані країни
         };
 
-        // Виробник з прямого поля з MODX (LEFT JOIN modx_ms2_vendors). Фолбек: з назви в дужках.
+        // Виробник — ТІЛЬКИ з прямого поля з MODX (modx_ms2_vendors.name).
+        // Без fallback на name, щоб не було розсинхрону "Coltene" vs "Coltene/Whaledent AG"
         function extractManufacturer(item) {
-            if (typeof item === 'string') {
-                // Старий API сумісність — приймає просто name
-                const m = item.match(/\(([^)]+)\)\s*$/);
-                if (!m) return '';
-                const v = m[1].trim();
-                if (v.length < 3 || /^\d+$/.test(v)) return '';
-                return v;
-            }
-            if (item && item.vendor) return item.vendor.trim();
-            // Фолбек на ім'я
-            if (item && item.name) return extractManufacturer(item.name);
+            if (typeof item === 'string') return ''; // legacy виклики ігноруємо
+            if (item && item.vendor) return String(item.vendor).trim();
             return '';
         }
 
@@ -1585,18 +1427,12 @@
             } catch (e) {}
         }
 
-        async function openFilters() {
-            await ensureFullCategoryLoaded();
-            // Заповнюємо UI поточним станом
-            document.getElementById('filter-instock').checked = filterState.inStock;
-            _syncToggle('filter-instock-slider', 'filter-instock', filterState.inStock);
-            document.getElementById('filter-price-min').value = filterState.priceMin || '';
-            document.getElementById('filter-price-max').value = filterState.priceMax || '';
-
+        function renderFilterChips() {
             // Чіпи виробників і країн — з ВСІХ завантажених у поточну категорію товарів
             const list = (fullList && fullList.length) ? fullList : (loadedProducts || []);
             const renderChips = (items, wrapId, selectedSet, toggleFn, emptyText) => {
                 const wrap = document.getElementById(wrapId);
+                if (!wrap) return;
                 if (items.length === 0) {
                     wrap.innerHTML = `<div style="color:var(--text-muted);font-size:12px;">${emptyText}</div>`;
                     return;
@@ -1604,33 +1440,50 @@
                 wrap.innerHTML = items.map(([m, count]) => {
                     const active = selectedSet.has(m);
                     const escaped = m.replace(/'/g, "\\'").replace(/"/g, "&quot;");
-                    return `<button onclick="${toggleFn}('${escaped}')"
+                    return `<button type="button" onclick="${toggleFn}('${escaped}')"
                         style="padding:7px 11px;border:1.5px solid ${active ? 'var(--teal)' : 'var(--border)'};
                                background:${active ? 'var(--teal)' : 'var(--white)'};color:${active ? 'white' : 'var(--text)'};
-                               border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;">
+                               border-radius:14px;font-size:12px;font-weight:600;cursor:pointer;touch-action:manipulation;">
                         ${m} <span style="opacity:0.7;font-weight:400;">${count}</span></button>`;
                 }).join('');
             };
-            renderChips(getUniqueManufacturers(list), 'filter-manufacturers', filterState.manufacturers, 'toggleManufacturer', 'У цій категорії виробник не вказаний');
-            renderChips(getUniqueCountries(list), 'filter-countries', filterState.countries, 'toggleCountry', 'У цій категорії країна не вказана');
+            renderChips(getUniqueManufacturers(list), 'filter-manufacturers', filterState.manufacturers, 'toggleManufacturer', 'Завантаження...');
+            renderChips(getUniqueCountries(list), 'filter-countries', filterState.countries, 'toggleCountry', 'Завантаження...');
+        }
 
-            // Слухач toggle для in-stock
+        async function openFilters() {
+            // 1) Спочатку показуємо модалку — щоб користувач НЕ думав що нічого не сталося
+            document.getElementById('filters-modal').style.display = 'flex';
+
+            // 2) Заповнюємо UI поточним станом
+            document.getElementById('filter-instock').checked = filterState.inStock;
+            _syncToggle('filter-instock-slider', 'filter-instock', filterState.inStock);
+            document.getElementById('filter-price-min').value = filterState.priceMin || '';
+            document.getElementById('filter-price-max').value = filterState.priceMax || '';
+
+            // 3) Рендеримо чіпи з того що вже є (може бути порожньо, тоді покаже "Завантаження...")
+            renderFilterChips();
+
+            // 4) Слухач toggle для in-stock
             const cbIn = document.getElementById('filter-instock');
             cbIn.onchange = () => _syncToggle('filter-instock-slider', 'filter-instock', cbIn.checked);
 
-            document.getElementById('filters-modal').style.display = 'flex';
+            // 5) Догрузити повний список категорії (для повного набору виробників/країн)
+            //    Потім перерендерити чіпи з оновленими даними.
+            await ensureFullCategoryLoaded();
+            renderFilterChips();
         }
         function closeFilters() { document.getElementById('filters-modal').style.display = 'none'; }
 
         function toggleManufacturer(m) {
             if (filterState.manufacturers.has(m)) filterState.manufacturers.delete(m);
             else filterState.manufacturers.add(m);
-            openFilters(); // re-render chips
+            renderFilterChips();
         }
         function toggleCountry(c) {
             if (filterState.countries.has(c)) filterState.countries.delete(c);
             else filterState.countries.add(c);
-            openFilters();
+            renderFilterChips();
         }
 
         function resetFilters() {
@@ -2001,14 +1854,6 @@
             } else {
                 html += '<div class="tile-img-placeholder" id="img-' + p.id + '">🦷</div>';
             }
-            // ⚖️ Кнопка "Порівняти" — у правому верхньому куті тайла, без переходу в картку
-            const isCmp = compareList.some(c => String(c.id) === String(p.id));
-            html += '<button class="tile-compare-btn ' + (isCmp ? 'active' : '') + '" id="cmp-tile-' + p.id + '" title="Порівняти" onclick="event.stopPropagation();toggleCompareFromTile(' + p.id + ',\'' + (p.sku || '') + '\',\'' + nameEsc + '\',' + (price||0) + ',\'' + (p.presence||'') + '\',\'' + imgEsc + '\',this)">'
-                + '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-                + '<path d="M12 3v18M3 9h18"/>'    // вертикальна вісь + горизонтальна перекладина ваг
-                + '<path d="M6 9l-3 7a3 3 0 0 0 6 0z"/>'  // ліва чаша
-                + '<path d="M18 9l-3 7a3 3 0 0 0 6 0z"/>' // права чаша
-                + '</svg></button>';
             html += '</div>';
             html += '<div class="tile-body">';
             html += '<div class="tile-name">' + (p.name || '—') + '</div>';
@@ -2532,12 +2377,6 @@
             const isFav = favorites.some(f => String(f.id) === String(currentProductId));
             btn.innerHTML = heartSVG(isFav);
             btn.classList.toggle('active', isFav);
-            // Синхронізуємо кнопку порівняння теж (показуємо чи додано)
-            const cmpBtn = document.getElementById('btnCompareDetail');
-            if (cmpBtn) {
-                const isCmp = compareList.some(c => String(c.id) === String(currentProductId));
-                cmpBtn.classList.toggle('active', isCmp);
-            }
             // Синхронізуємо кнопку нагадування
             updateReminderBtn();
         }
