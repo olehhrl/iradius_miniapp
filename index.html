@@ -1183,13 +1183,22 @@
         }
 
         // Дзвіночок прямо з плитки каталогу (не відкриваючи картку)
+        // Telegram user_id — щоб сервер міг знайти телефон у user_phones.json
+        // навіть коли URL не містить ?phone= (типово для shared-link/startapp).
+        function getTgUserId() {
+            try {
+                return (window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe
+                       && Telegram.WebApp.initDataUnsafe.user && Telegram.WebApp.initDataUnsafe.user.id) || '';
+            } catch (e) { return ''; }
+        }
+
         async function requestRestockTile(id, sku, name, btn) {
             btn.disabled = true; btn.textContent = '…';
             try {
                 const res = await fetch(SERVER_URL + '/restock', {
                     method: 'POST',
                     headers: { ...H, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ product_id: id, sku: sku || '', name: name || '', phone: userPhone || '' })
+                    body: JSON.stringify({ product_id: id, sku: sku || '', name: name || '', phone: userPhone || '', tg_user_id: getTgUserId() })
                 });
                 const d = await res.json();
                 if (d.ok) { btn.textContent = '✅'; showToast('Повідомимо, коли товар зʼявиться 🔔'); hapticSuccess(); }
@@ -1970,7 +1979,7 @@
                 const res = await fetch(SERVER_URL + '/restock', {
                     method: 'POST',
                     headers: { ...H, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ product_id: p.id, sku: p.sku || '', name: p.name || '', phone: userPhone || '' })
+                    body: JSON.stringify({ product_id: p.id, sku: p.sku || '', name: p.name || '', phone: userPhone || '', tg_user_id: getTgUserId() })
                 });
                 const d = await res.json();
                 if (d.ok) {
