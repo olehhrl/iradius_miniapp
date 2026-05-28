@@ -24,12 +24,12 @@
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
         .header { background: var(--teal); color: white; display: flex; flex-direction: column; position: sticky; top: 0; z-index: 200; }
-        .header-row { display: flex; align-items: center; padding: 0 10px; min-height: 80px; }
-        .header-title { font-size: 19px; font-weight: 700; text-align: center; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .header-back { background: none; border: none; color: white; font-size: 30px; cursor: pointer; display: none; line-height: 1; padding: 0 6px; flex-shrink: 0; width: 42px; text-align: left; }
-        /* Невидимий spacer тієї ж ширини, що й кнопка back — щоб title був по центру екрана,
-           а не по центру простору справа від back. */
-        .header-spacer { width: 42px; flex-shrink: 0; }
+        /* CSS Grid: фіксовані 42px зліва/справа гарантують центрування title,
+           навіть коли back ховається через display:none (колонка зберігається). */
+        .header-row { display: grid; grid-template-columns: 42px 1fr 42px; align-items: center; padding: 0 10px; min-height: 54px; }
+        .header-title { font-size: 17px; font-weight: 700; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .header-back { background: none; border: none; color: white; font-size: 26px; cursor: pointer; display: none; line-height: 1; padding: 0; width: 42px; text-align: left; }
+        .header-spacer { width: 42px; }
 
         .search-wrap { padding: 0 12px 8px; display: flex; position: relative; }
         .search-wrap input { flex: 1; width: 100%; padding: 8px 14px; border: none; border-radius: 18px; font-size: 13px; background: rgba(255,255,255,.9); outline: none; }
@@ -663,7 +663,6 @@
                 html += '<div class="category-img-placeholder" id="catimg-' + g.id + '">📦</div>';
                 html += '</div>';
                 html += '<div class="category-label"><div class="name">' + name + '</div>';
-                if (hasChildren) html += '<div class="arrow">▶ підкатегорії</div>';
                 html += '</div></div>';
             }
             // БЕЗ папки «Всі товари» — товари завантажуються одразу в openGroup
@@ -1546,7 +1545,9 @@
         function shareProduct() {
             if (!currentProductId) return;
             const p = currentProductData || {};
-            const url = 'https://olehhrl.github.io/iradius_miniapp?p=' + currentProductId;
+            // Telegram-deep-link на сам бот: одержувач відкриває Mini App усередині Telegram,
+            // GitHub-URL/нікнейм не світиться. startapp=PRODUCT_ID підхопиться у init.
+            const url = 'https://t.me/iradius_dental_bot/app?startapp=' + currentProductId;
             const name = (p.name || 'Товар IRadius').replace(/\s+/g, ' ').trim();
             const text = '🦷 ' + name + (p.price ? ' — ' + Math.round(parseFloat(p.price)) + ' грн' : '');
             const shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(text);
@@ -2732,8 +2733,13 @@
         (async () => {
             await loadGroupsFromServer();
             // Deep-link: ?p=PRODUCT_ID — відкриваємо картку товару одразу.
-            // Використовується у сповіщенні «✅ товар у наявності» (кнопка в Telegram).
-            const startProductId = new URLSearchParams(window.location.search).get('p');
+            // Джерела: ?p= (web-кнопка з restock) АБО startapp= (t.me/iradius_dental_bot/app?startapp=ID — share)
+            let startProductId = new URLSearchParams(window.location.search).get('p');
+            try {
+                if (!startProductId && window.Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe) {
+                    startProductId = Telegram.WebApp.initDataUnsafe.start_param || null;
+                }
+            } catch (e) {}
             if (startProductId) {
                 try { openDetail(startProductId, ''); } catch (e) {}
             }
