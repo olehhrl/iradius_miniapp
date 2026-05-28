@@ -1545,10 +1545,9 @@
         function shareProduct() {
             if (!currentProductId) return;
             const p = currentProductData || {};
-            // Deep-link: запускає бот з параметром /start p_<ID>, бот відповідає кнопкою
-            // «Відкрити товар» → web_app з потрібним ?p=. GitHub-URL/нікнейм не світиться,
-            // одержувач бачить тільки «t.me/iradius_dental_bot».
-            const url = 'https://t.me/iradius_dental_bot?start=p_' + currentProductId;
+            // Named Mini App: одразу відкриває картку товару в Telegram, без зайвих кліків.
+            // start_param підхоплюється в init через Telegram.WebApp.initDataUnsafe.
+            const url = 'https://t.me/iradius_dental_bot/shop?startapp=' + currentProductId;
             const name = (p.name || 'Товар IRadius').replace(/\s+/g, ' ').trim();
             const text = '🦷 ' + name + (p.price ? ' — ' + Math.round(parseFloat(p.price)) + ' грн' : '');
             const shareUrl = 'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(text);
