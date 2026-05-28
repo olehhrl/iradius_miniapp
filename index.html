@@ -3095,14 +3095,20 @@
                 const need = FREE_SHIPPING - total;
                 const percent = Math.round((total / FREE_SHIPPING) * 100);
                 html += `<div style="margin:10px 14px;padding:12px 14px;background:var(--green-light);border:1.5px solid var(--green);border-radius:12px;font-size:13px;color:var(--text);">
-                    🚚 До <b>безкоштовної доставки</b> залишилось <b>${need} грн</b>! Додайте ще трохи і не платитимете за пересилку.
+                    🚚 До <b>безкоштовної доставки</b> залишилось <b>${need} грн</b>!
                     <div style="margin-top:8px;height:6px;background:rgba(0,0,0,0.08);border-radius:3px;overflow:hidden;">
                         <div style="height:100%;width:${percent}%;background:var(--green);transition:width .3s;"></div>
                     </div>
+                    <div style="margin-top:8px;font-size:11px;color:var(--text-muted);line-height:1.45;">
+                        ⚠️ Умова: 1-2 місця загальною вагою <b>до 30 кг</b>. Якщо замовлення великогабаритне — доставка оплачується окремо.
+                    </div>
                 </div>`;
             } else if (total >= FREE_SHIPPING) {
-                html += `<div style="margin:10px 14px;padding:10px 14px;background:var(--green-light);border:1.5px solid var(--green);border-radius:12px;font-size:13px;color:var(--text);text-align:center;">
-                    ✅ Доставка <b>безкоштовна</b> 🎉
+                html += `<div style="margin:10px 14px;padding:12px 14px;background:var(--green-light);border:1.5px solid var(--green);border-radius:12px;font-size:13px;color:var(--text);">
+                    <div style="text-align:center;font-weight:700;">✅ Доставка <b>безкоштовна</b> 🎉</div>
+                    <div style="margin-top:6px;font-size:11px;color:var(--text-muted);text-align:center;line-height:1.45;">
+                        ⚠️ Умова: 1-2 місця загальною вагою <b>до 30 кг</b>. Великогабаритні замовлення — доставка платна.
+                    </div>
                 </div>`;
             }
             html += '<div class="cart-total"><span class="cart-total-label">Разом:</span><span class="cart-total-price">' + total + ' грн</span></div>';
