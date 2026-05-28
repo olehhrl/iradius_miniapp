@@ -282,6 +282,16 @@
     <!-- CATALOG -->
     <div class="content" id="page-main">
         <div id="breadcrumb-wrap"></div>
+        <!-- Перемикач "Великий шрифт" — accessibility прямо на головній -->
+        <div id="large-text-row" style="display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:8px 14px 0;">
+            <span style="font-size:12px;color:var(--text-muted);">🔍 Великий шрифт</span>
+            <label style="position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0;cursor:pointer;">
+                <input type="checkbox" id="toggle-large-text" onchange="toggleLargeText(this.checked)" style="opacity:0;width:0;height:0;">
+                <span id="toggle-large-slider" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.2s;">
+                    <span style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
+                </span>
+            </label>
+        </div>
         <div class="section-title" id="catalog-title">Категорії</div>
         <div class="categories-grid" id="categories-grid">
             <div style="grid-column:1/-1" class="state-box"><div class="spinner"></div></div>
@@ -358,23 +368,6 @@
 
     <!-- PROFILE -->
     <div id="page-profile" style="display:none; padding: 0 0 80px;">
-        <!-- Налаштування доступності -->
-        <div style="padding:14px 14px 0;">
-            <div style="background:white;border:1.5px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow);">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                    <div>
-                        <div style="font-size:14px;font-weight:700;color:var(--text);">🔍 Великий шрифт</div>
-                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Збільшує текст і кнопки. 2 категорії в ряд замість 3.</div>
-                    </div>
-                    <label style="position:relative;display:inline-block;width:50px;height:28px;flex-shrink:0;">
-                        <input type="checkbox" id="toggle-large-text" onchange="toggleLargeText(this.checked)" style="opacity:0;width:0;height:0;">
-                        <span id="toggle-large-slider" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:28px;transition:.2s;">
-                            <span style="position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
-                        </span>
-                    </label>
-                </div>
-            </div>
-        </div>
         <!-- Дії кабінету (окремо, над замовленнями) -->
         <div style="padding:14px 14px 4px;">
             <button onclick="openFeedback()" style="width:100%;padding:13px;background:var(--teal);border:none;border-radius:12px;font-size:14px;font-weight:700;color:white;cursor:pointer;box-shadow:var(--shadow);">
@@ -595,12 +588,22 @@
 
         // --- PAGES ---
         const pages = ['page-main','page-products','page-detail','page-popular','page-favorites','page-cart','page-profile'];
+        function updateLargeTextRowVisibility() {
+            // Перемикач "Великий шрифт" показуємо ТІЛЬКИ на стартовій (корінь каталогу).
+            const row = document.getElementById('large-text-row');
+            if (!row) return;
+            const isRoot = (typeof groupStack === 'undefined' || groupStack.length === 0);
+            const isMain = document.getElementById('page-main').style.display !== 'none';
+            row.style.display = (isRoot && isMain) ? 'flex' : 'none';
+        }
+
         function showPage(name) {
             pages.forEach(id => document.getElementById(id).style.display = 'none');
             document.getElementById('page-' + name).style.display = 'block';
             syncBackButton(name === 'main');
             // Пошуковий рядок тільки на каталозі та результатах пошуку
             toggleSearchBar(name === 'main' || name === 'products');
+            updateLargeTextRowVisibility();
         }
 
         function setNav(active) {
@@ -633,6 +636,7 @@
             renderGroups(getRootGroups());
             renderBreadcrumb();
             setNav('nav-catalog');
+            updateLargeTextRowVisibility();
         }
 
         function goBack() {
