@@ -1235,15 +1235,25 @@
                 setNav('nav-catalog');
                 hidePagination();
                 searchProducts(q);
-                // iOS: знімаємо клавіатуру щоб не закривала результати
-                try { document.getElementById('searchInput').blur(); } catch (err) {}
+                // iOS: знімаємо клавіатуру щоб не закривала результати (readonly-хак)
+                dismissKeyboard();
             }, 400);
         });
+        // Надійне знаття клавіатури на iOS WebView. Простий blur() не спрацьовує —
+        // потрібен readonly-трюк: тимчасово readonly → blur → знімаємо readonly.
+        function dismissKeyboard() {
+            const input = document.getElementById('searchInput');
+            if (!input) return;
+            try {
+                input.setAttribute('readonly', 'readonly');
+                input.blur();
+                setTimeout(() => input.removeAttribute('readonly'), 80);
+            } catch (e) {}
+        }
         document.getElementById('searchInput').addEventListener('keydown', e => {
             if (e.key === 'Enter') {
                 clearTimeout(searchTimer);
-                // На iOS клавіатура висить поки поле має фокус — знімаємо явно.
-                try { e.target.blur(); } catch (err) {}
+                dismissKeyboard();
                 doSearch();
             }
         });
