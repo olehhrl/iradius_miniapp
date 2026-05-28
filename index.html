@@ -1336,32 +1336,29 @@
             updateReminderBtn();
         }
 
-        // --- PDF DOWNLOAD ---
+        // --- PDF: шлемо документом у чат бота (універсальний шлях для мобільних) ---
         async function downloadOrderPdf(orderId) {
-            const phone = userPhone || '';
-            if (!phone) { showToast('Не вдалося визначити телефон'); return; }
-            const url = `${SERVER_URL}/orders/${orderId}/pdf?phone=${encodeURIComponent(phone)}`;
+            const tgId = getTgUserId();
+            if (!tgId) {
+                showToast('Не вдалося визначити користувача Telegram');
+                return;
+            }
             showToast('📄 Готую PDF...');
             try {
-                const res = await fetch(url, { headers: H });
-                if (!res.ok) { showToast('Не вдалося згенерувати PDF'); return; }
-                const blob = await res.blob();
-                const blobUrl = URL.createObjectURL(blob);
-                // На мобільному Telegram WebView відкриваємо в новій вкладці через openLink
-                try {
-                    if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openLink) {
-                        // openLink не вміє blob URL — використовуємо завантаження через <a>
-                    }
-                } catch (e) {}
-                const a = document.createElement('a');
-                a.href = blobUrl;
-                a.download = `order-${orderId}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+                const res = await fetch(`${SERVER_URL}/orders/${orderId}/pdf-to-telegram`, {
+                    method: 'POST',
+                    headers: { ...H, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tg_user_id: tgId })
+                });
+                const d = await res.json();
+                if (d.ok) {
+                    showToast('✅ PDF надіслано в чат бота');
+                    try { Telegram.WebApp.HapticFeedback.notificationOccurred('success'); } catch(e) {}
+                } else {
+                    showToast('Помилка: ' + (d.error || 'невідомо'));
+                }
             } catch (e) {
-                showToast('Помилка: ' + (e.message || e));
+                showToast('Помилка зʼєднання: ' + (e.message || e));
             }
         }
 
