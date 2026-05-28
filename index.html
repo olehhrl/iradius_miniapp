@@ -2169,9 +2169,11 @@
                 const rawImg = p.main_image || (p.images && p.images[0] && p.images[0].url) || '';
                 if (rawImg) {
                     const blobUrl = await loadImageBlob(rawImg);
-                    // Зберігаємо обидва URL глобально — lightbox перебирає по черзі
+                    // Зберігаємо обидва URL глобально — lightbox перебирає по черзі.
+                    // main_image_full — реальний URL оригіналу з MODX (може мати інше розширення).
+                    // Якщо API не повернув — фолбек на просту заміну /small/ → /
                     currentDetailImageSmall = rawImg;
-                    currentDetailImageFull  = rawImg.replace('/small/', '/');
+                    currentDetailImageFull  = p.main_image_full || rawImg.replace('/small/', '/');
                     document.getElementById('detail-img-wrap').innerHTML = blobUrl
                         ? '<img class="detail-img" src="' + blobUrl + '" onclick="openImageLightbox()" style="cursor:zoom-in;">'
                         : '<div class="detail-img-placeholder">🦷</div>';
