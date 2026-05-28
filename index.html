@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IRadius Dental Shop</title>
+    <!-- Прогрів TLS до сервера фото та API: економить ~150-300мс на першу картинку. -->
+    <link rel="preconnect" href="https://iradius.com.ua" crossorigin>
+    <link rel="dns-prefetch" href="https://iradius.com.ua">
+    <link rel="preconnect" href="https://thumb-scrubbed-unsent.ngrok-free.dev" crossorigin>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -467,7 +471,13 @@
         // Викликаємо при додаванні в обране, щоб у момент переходу в "Обране"
         // фото вже було готове.
         async function prewarmImage(rawUrl) {
-            if (!rawUrl || !('caches' in window)) return;
+            if (!rawUrl) return;
+            // iradius — браузер сам кешує, прогрів робимо через невидимий <img>
+            if (rawUrl.indexOf('https://iradius.com.ua/') === 0) {
+                try { const im = new Image(); im.src = rawUrl; } catch (e) {}
+                return;
+            }
+            if (!('caches' in window)) return;
             const key = SERVER_URL + '/image?url=' + encodeURIComponent(rawUrl);
             try {
                 const cache = await caches.open(IMG_CACHE_NAME);
@@ -479,6 +489,10 @@
 
         async function loadImageBlob(rawUrl) {
             if (!rawUrl) return null;
+            // Швидкий шлях: фото з iradius.com.ua вантажаться напряму браузером (HTTP/2, паралельно,
+            // браузерний HTTP-кеш + CDN-friendly). Не йдемо через ngrok-проксі. Це 5-20× швидше.
+            if (rawUrl.indexOf('https://iradius.com.ua/') === 0) return rawUrl;
+            // Для Prom CDN та інших — через проксі (ngrok-skip + hotlink-фікс).
             const key = SERVER_URL + '/image?url=' + encodeURIComponent(rawUrl);
             try {
                 if ('caches' in window) {
@@ -658,17 +672,20 @@
                 const hasChildren = allGroups.some(c => c.parent_group_id === g.id);
                 html += '<div class="category-card" onclick="openGroup(' + g.id + ', \'' + name.replace(/'/g, "\\'") + '\', ' + hasChildren + ')" id="cat-' + g.id + '">';
                 html += '<div class="category-img-wrap">';
-                // Прямий <img src> на ngrok не вантажиться в Telegram WebView на телефоні
-                // (без ngrok-skip-browser-warning header → 403/HTML). Через blob — як в товарах.
-                html += '<div class="category-img-placeholder" id="catimg-' + g.id + '">📦</div>';
+                // Швидкий шлях: для iradius-фото відразу <img src> з lazy + async decoding.
+                // Браузер сам кешує, HTTP/2 паралелить — без blob/проксі.
+                if (g.image && g.image.indexOf('https://iradius.com.ua/') === 0) {
+                    html += '<img class="category-img" id="catimg-' + g.id + '" src="' + g.image + '" loading="lazy" decoding="async" onerror="this.style.display=\'none\'">';
+                } else {
+                    html += '<div class="category-img-placeholder" id="catimg-' + g.id + '">📦</div>';
+                }
                 html += '</div>';
                 html += '<div class="category-label"><div class="name">' + name + '</div>';
                 html += '</div></div>';
             }
-            // БЕЗ папки «Всі товари» — товари завантажуються одразу в openGroup
             grid.innerHTML = html;
-            // Фото категорій — через blob (fetch з ngrok-skip-заголовком). Паралельно.
-            groups.forEach(g => { if (g.image) loadCategoryImage(g); });
+            // Тільки для non-iradius (Prom тощо) — все ще проксі через blob.
+            groups.forEach(g => { if (g.image && g.image.indexOf('https://iradius.com.ua/') !== 0) loadCategoryImage(g); });
         }
 
         async function loadCategoryImage(g) {
@@ -1118,7 +1135,12 @@
             const imgEsc = rawImg2.replace(/\'/g,"\\\'");
             let html = '<div class="product-tile' + (p.presence !== 'available' ? ' unavailable' : '') + '" onclick="openDetail(' + p.id + ', \'' + (p.sku || '') + '\'  )">';
             html += '<div class="tile-img-wrap">';
-            html += '<div class="tile-img-placeholder" id="img-' + p.id + '">🦷</div>';
+            // Швидкий шлях: iradius-фото вантажаться напряму браузером (HTTP/2, кеш, паралельно).
+            if (rawImg2 && rawImg2.indexOf('https://iradius.com.ua/') === 0) {
+                html += '<img class="tile-img" id="img-' + p.id + '" src="' + rawImg2 + '" loading="lazy" decoding="async" onerror="this.outerHTML=\'<div class=&quot;tile-img-placeholder&quot; id=&quot;img-' + p.id + '&quot;>🦷</div>\'">';
+            } else {
+                html += '<div class="tile-img-placeholder" id="img-' + p.id + '">🦷</div>';
+            }
             html += '</div>';
             html += '<div class="tile-body">';
             html += '<div class="tile-name">' + (p.name || '—') + '</div>';
@@ -1165,10 +1187,9 @@
         async function loadTileImage(p) {
             const rawImg = p.main_image || p.image || (p.images && p.images[0] && p.images[0].url) || '';
             const el = document.getElementById('img-' + p.id);
-            if (!el || el.tagName === 'IMG') return;
+            if (!el || el.tagName === 'IMG') return; // уже завантажено напряму в buildTileHTML
             if (!rawImg) return;
-            // ЗАВЖДИ через loadImageBlob: fetch на проксі /image йде з ngrok-заголовком,
-            // повертає blob. Прямий <img src> (хоч iradius, хоч ngrok) дає 403/блок у WebView.
+            // iradius напряму не доходить тільки сюди (для Prom CDN — через blob).
             const blobUrl = await loadImageBlob(rawImg);
             const el2 = document.getElementById('img-' + p.id);
             if (blobUrl && el2 && el2.tagName !== 'IMG') {
