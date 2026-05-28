@@ -1198,8 +1198,10 @@
         }
 
         let searchTimer = null;
+        let keyboardDismissTimer = null; // окремий, довший — щоб клавіатура не злітала під час набору
         document.getElementById('searchInput').addEventListener('input', function() {
             clearTimeout(searchTimer);
+            clearTimeout(keyboardDismissTimer);
             const q = this.value.trim();
             // Фільтруємо історію по введеному тексту (зникне якщо нічого не збігається)
             showSearchHistory();
@@ -1209,6 +1211,8 @@
                 return;
             }
             if (q.length < 2) return;
+            // Швидко (400мс) — рендеримо результати щоб клієнт їх бачив поки набирає.
+            // НЕ знімаємо клавіатуру — інакше встроєне керування буде злітати під час набору.
             searchTimer = setTimeout(() => {
                 isSearchMode = true;
                 lastSearchQuery = q;
@@ -1219,9 +1223,11 @@
                 setNav('nav-catalog');
                 hidePagination();
                 searchProducts(q);
-                // iOS: знімаємо клавіатуру щоб не закривала результати (readonly-хак)
-                dismissKeyboard();
             }, 400);
+            // Окремий таймер на закриття клавіатури — 2с без вводу.
+            keyboardDismissTimer = setTimeout(() => {
+                dismissKeyboard();
+            }, 2000);
         });
         // Надійне знаття клавіатури на iOS WebView. Простий blur() не спрацьовує —
         // потрібен readonly-трюк: тимчасово readonly → blur → знімаємо readonly.
