@@ -3557,30 +3557,40 @@
             sp.innerHTML = '<div class="spinner" style="border-color:rgba(255,255,255,0.3);border-top-color:white;"></div><div style="color:white;font-size:13px;margin-top:10px;">Завантажую якісне фото...</div>';
             try { Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch(e) {}
 
-            // 1) Спробуємо ПРЯМО для iradius (HTTP/2, кеш)
-            // 2) Якщо не iradius або не вдалось — через проксі-blob
-            const showImage = (src) => {
-                img.onload = () => { sp.style.display = 'none'; img.style.display = 'block'; };
-                img.onerror = null;
-                img.src = src;
+            const setError = (msg) => {
+                sp.innerHTML = '<div style="color:white;text-align:center;">' + msg + '</div>';
             };
 
-            const tryFallback = async () => {
-                try {
-                    const blob = await loadImageBlob(fullUrl);
-                    if (blob) { showImage(blob); return; }
-                } catch (e) {}
-                sp.innerHTML = '<div style="color:white;">Не вдалося завантажити повне фото</div>';
-            };
+            // Спроба 1: прямий <img src> на iradius (швидко якщо CDN та CSP дозволяють)
+            const tryDirect = () => new Promise((resolve) => {
+                if (fullUrl.indexOf('https://iradius.com.ua/') !== 0) return resolve(false);
+                const probe = new Image();
+                const timer = setTimeout(() => { probe.onload = probe.onerror = null; resolve(false); }, 8000);
+                probe.onload = () => { clearTimeout(timer); resolve(true); };
+                probe.onerror = () => { clearTimeout(timer); resolve(false); };
+                probe.src = fullUrl;
+            });
 
-            if (fullUrl.indexOf('https://iradius.com.ua/') === 0) {
-                // Прямий шлях. Якщо не завантажиться — підемо через проксі.
-                img.onload = () => { sp.style.display = 'none'; img.style.display = 'block'; };
-                img.onerror = () => { tryFallback(); };
+            const ok = await tryDirect();
+            if (ok) {
+                img.onload = null; img.onerror = null;
                 img.src = fullUrl;
-            } else {
-                // Не iradius — одразу через проксі (Prom тощо)
-                await tryFallback();
+                sp.style.display = 'none'; img.style.display = 'block';
+                return;
+            }
+
+            // Спроба 2: через наш проксі /image (форс fetch+blob, ігнорує iradius short-circuit)
+            try {
+                const proxyKey = SERVER_URL + '/image?url=' + encodeURIComponent(fullUrl);
+                const res = await fetch(proxyKey, { headers: H });
+                if (!res || !res.ok) throw new Error('proxy ' + (res && res.status));
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                img.onload = () => { sp.style.display = 'none'; img.style.display = 'block'; };
+                img.onerror = () => setError('Не вдалося відобразити фото');
+                img.src = url;
+            } catch (e) {
+                setError('Не вдалося завантажити повне фото<br><span style="font-size:11px;opacity:0.7;">' + (e.message || e) + '</span>');
             }
         }
         function closeImageLightbox() {
