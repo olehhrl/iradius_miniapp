@@ -226,6 +226,45 @@
         .success-box h2 { font-size: 20px; font-weight: 700; color: var(--teal); margin-bottom: 8px; }
         .success-box p { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
         .btn-back-catalog { margin-top: 24px; padding: 14px 28px; background: var(--teal); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; }
+
+        /* ============================
+           ACCESSIBILITY: великий шрифт
+           Активується класом .large-text на <body> через toggle у кабінеті.
+           ============================ */
+        body.large-text { font-size: 18px; }
+        body.large-text .header-title { font-size: 21px; }
+        body.large-text .search-wrap input { font-size: 16px; padding: 11px 16px; }
+        body.large-text .section-title { font-size: 17px; padding: 16px 14px 10px; }
+        /* Категорії: 2 в ряд замість 3, більший шрифт */
+        body.large-text .categories-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        body.large-text .category-label .name { font-size: 13px; line-height: 1.35; }
+        body.large-text .category-label { padding: 9px 6px 11px; }
+        /* Товари: 2 в ряд (вже стандарт), збільшені тексти */
+        body.large-text .tile-name { font-size: 13px; line-height: 1.4; }
+        body.large-text .tile-sku { font-size: 11px; }
+        body.large-text .tile-price { font-size: 16px; }
+        body.large-text .presence-available, body.large-text .presence-unavailable { font-size: 11px; }
+        body.large-text .tile-add, body.large-text .tile-bell { width: 32px; height: 32px; font-size: 18px; }
+        body.large-text .tile-qty-btn { width: 30px; height: 30px; font-size: 16px; }
+        body.large-text .tile-qty-input { font-size: 14px; }
+        body.large-text .tile-fav { width: 32px; height: 32px; }
+        /* Картка товару */
+        body.large-text .detail-name { font-size: 19px; line-height: 1.4; }
+        body.large-text .detail-price { font-size: 24px; }
+        body.large-text .detail-desc { font-size: 15px; line-height: 1.6; }
+        body.large-text .breadcrumb { font-size: 14px; }
+        body.large-text .similar-card .similar-name { font-size: 11px; }
+        /* Кошик */
+        body.large-text .cart-item-name { font-size: 14px; -webkit-line-clamp: 3; }
+        body.large-text .cart-item-price { font-size: 15px; }
+        body.large-text .cart-item-img, body.large-text .cart-item-img-placeholder { width: 70px; height: 70px; font-size: 28px; }
+        body.large-text .qty-btn { width: 32px; height: 32px; font-size: 18px; }
+        body.large-text .qty-num { font-size: 16px; min-width: 26px; }
+        body.large-text .cart-total-label, body.large-text .cart-total-price { font-size: 18px; }
+        /* Нижнє меню — більші іконки і шрифт */
+        body.large-text .bottom-nav { padding-top: 6px; }
+        body.large-text .nav-item { font-size: 11px; }
+        body.large-text .nav-icon { font-size: 22px; }
     </style>
 </head>
 <body>
@@ -319,6 +358,23 @@
 
     <!-- PROFILE -->
     <div id="page-profile" style="display:none; padding: 0 0 80px;">
+        <!-- Налаштування доступності -->
+        <div style="padding:14px 14px 0;">
+            <div style="background:white;border:1.5px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow);">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <div>
+                        <div style="font-size:14px;font-weight:700;color:var(--text);">🔍 Великий шрифт</div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Збільшує текст і кнопки. 2 категорії в ряд замість 3.</div>
+                    </div>
+                    <label style="position:relative;display:inline-block;width:50px;height:28px;flex-shrink:0;">
+                        <input type="checkbox" id="toggle-large-text" onchange="toggleLargeText(this.checked)" style="opacity:0;width:0;height:0;">
+                        <span id="toggle-large-slider" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:28px;transition:.2s;">
+                            <span style="position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+        </div>
         <!-- Дії кабінету (окремо, над замовленнями) -->
         <div style="padding:14px 14px 4px;">
             <button onclick="openFeedback()" style="width:100%;padding:13px;background:var(--teal);border:none;border-radius:12px;font-size:14px;font-weight:700;color:white;cursor:pointer;box-shadow:var(--shadow);">
@@ -2786,7 +2842,33 @@
             setTimeout(() => t.classList.remove('show'), 2000);
         }
 
+        // --- ACCESSIBILITY: великий шрифт ---
+        function applyLargeText(on) {
+            document.body.classList.toggle('large-text', !!on);
+            const slider = document.getElementById('toggle-large-slider');
+            if (slider) {
+                slider.style.background = on ? 'var(--teal)' : '#ccc';
+                const dot = slider.firstElementChild;
+                if (dot) dot.style.transform = on ? 'translateX(22px)' : 'translateX(0)';
+            }
+            const checkbox = document.getElementById('toggle-large-text');
+            if (checkbox) checkbox.checked = !!on;
+        }
+        function toggleLargeText(on) {
+            localStorage.setItem('ir_large_text', on ? '1' : '0');
+            applyLargeText(on);
+            // Перемальовуємо поточну сторінку — щоб grid категорій перестроївся одразу
+            if (typeof renderGroups === 'function' && groupStack && groupStack.length > 0) {
+                renderGroups(getChildGroups(currentGroupId));
+            } else if (typeof renderGroups === 'function') {
+                renderGroups(allGroups.filter(g => !g.parent_group_id));
+            }
+            try { Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch(e) {}
+        }
+
         // --- INIT ---
+        // Великий шрифт — застосовуємо ДО першого рендеру, щоб не блимало
+        applyLargeText(localStorage.getItem('ir_large_text') === '1');
         updateBadges();
         (async () => {
             await loadGroupsFromServer();
