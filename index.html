@@ -370,12 +370,6 @@
                     <div class="detail-presence-badge" id="detail-presence"></div>
                 </div>
             </div>
-            <!-- Підписка на щомісячне нагадування -->
-            <div style="margin:14px 0 10px;">
-                <button id="btnReminder" onclick="toggleReminder()" style="width:100%;padding:11px;background:white;color:var(--teal-dark);border:1.5px solid var(--teal);border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;">
-                    🔔 Нагадувати раз на місяць
-                </button>
-            </div>
             <div class="detail-desc-title" id="detail-desc-title" style="display:none;">Опис</div>
             <div class="detail-desc" id="detail-desc"></div>
             <!-- Схожі товари — компактна горизонтальна стрічка під описом -->
@@ -384,8 +378,30 @@
                 <div id="detail-similar" class="similar-strip"></div>
             </div>
         </div>
-        <div class="detail-actions">
+        <div class="detail-actions" style="flex-direction:column;gap:8px;">
             <button class="btn-cart-detail" style="width:100%" onclick="addToCart()">🛒 Додати в кошик</button>
+            <button id="btnReminder" onclick="toggleReminder()" style="width:100%;padding:11px;background:white;color:var(--teal-dark);border:1.5px solid var(--teal);border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;">
+                🔔 Нагадай про покупку
+            </button>
+        </div>
+    </div>
+
+    <!-- ПОПАП ВИБОРУ КОЛИ НАГАДАТИ -->
+    <div id="reminder-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:750;align-items:flex-end;justify-content:center;" onclick="closeReminderModal()">
+        <div style="background:var(--white);border-radius:20px 20px 0 0;padding:22px 18px 22px;width:100%;max-width:480px;" onclick="event.stopPropagation()">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                <div style="font-size:17px;font-weight:800;color:var(--text);">🔔 Нагадай про покупку</div>
+                <button onclick="closeReminderModal()" style="background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;line-height:1;padding:0 4px;">✕</button>
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;">Коли вам нагадати про цей товар у Telegram?</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                <button onclick="setReminder('tomorrow')" style="width:100%;padding:14px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:15px;font-weight:600;color:var(--text);cursor:pointer;text-align:left;">⏰ Завтра</button>
+                <button onclick="setReminder('week')" style="width:100%;padding:14px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:15px;font-weight:600;color:var(--text);cursor:pointer;text-align:left;">📅 Через тиждень</button>
+                <button onclick="setReminder('month')" style="width:100%;padding:14px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:15px;font-weight:600;color:var(--text);cursor:pointer;text-align:left;">🗓 Через місяць</button>
+            </div>
+            <div id="reminder-existing" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+                <button onclick="cancelReminder()" style="width:100%;padding:11px;background:white;color:var(--red);border:1.5px solid var(--red);border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;">❌ Скасувати нагадування</button>
+            </div>
         </div>
     </div>
 
@@ -1318,46 +1334,69 @@
             if (subscribed) {
                 btn.style.background = 'var(--teal-light)';
                 btn.style.borderColor = 'var(--teal)';
-                btn.innerHTML = '✅ Нагадування увімкнено (вимкнути)';
+                btn.innerHTML = '✅ Нагадування встановлено';
             } else {
                 btn.style.background = 'white';
-                btn.innerHTML = '🔔 Нагадувати раз на місяць';
+                btn.innerHTML = '🔔 Нагадай про покупку';
             }
         }
 
-        async function toggleReminder() {
+        // Відкриває попап вибору терміну. Якщо вже є нагадування — показує кнопку скасування.
+        function toggleReminder() {
             const tgId = getTgUserId();
             if (!tgId) {
                 showToast('Не вдалося визначити користувача');
                 return;
             }
+            const isOn = myReminders.has(String(currentProductId));
+            document.getElementById('reminder-existing').style.display = isOn ? 'block' : 'none';
+            document.getElementById('reminder-modal').style.display = 'flex';
+            try { Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch(e) {}
+        }
+        function closeReminderModal() {
+            document.getElementById('reminder-modal').style.display = 'none';
+        }
+
+        // when: 'tomorrow' | 'week' | 'month'
+        async function setReminder(when) {
+            const tgId = getTgUserId();
             const pid = String(currentProductId);
             const p = currentProductData || {};
-            const btn = document.getElementById('btnReminder');
-            btn.disabled = true;
-            const isOn = myReminders.has(pid);
+            const labels = { tomorrow: 'завтра', week: 'через тиждень', month: 'через місяць' };
             try {
-                if (isOn) {
-                    await fetch(SERVER_URL + '/reminder', {
-                        method: 'DELETE',
-                        headers: { ...H, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ tg_user_id: tgId, product_id: pid })
-                    });
-                    myReminders.delete(pid);
-                    showToast('Нагадування вимкнено');
-                } else {
-                    await fetch(SERVER_URL + '/reminder', {
-                        method: 'POST',
-                        headers: { ...H, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ tg_user_id: tgId, product_id: pid, sku: p.sku || '', name: p.name || '' })
-                    });
-                    myReminders.add(pid);
-                    showToast('Підписано! Нагадування через 30 днів 🔔');
-                }
+                await fetch(SERVER_URL + '/reminder', {
+                    method: 'POST',
+                    headers: { ...H, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tg_user_id: tgId, product_id: pid,
+                        sku: p.sku || '', name: p.name || '', when: when
+                    })
+                });
+                myReminders.add(pid);
+                showToast('🔔 Нагадаємо ' + (labels[when] || when));
+                try { Telegram.WebApp.HapticFeedback.notificationOccurred('success'); } catch(e) {}
             } catch (e) {
                 showToast('Помилка зʼєднання');
             }
-            btn.disabled = false;
+            closeReminderModal();
+            updateReminderBtn();
+        }
+
+        async function cancelReminder() {
+            const tgId = getTgUserId();
+            const pid = String(currentProductId);
+            try {
+                await fetch(SERVER_URL + '/reminder', {
+                    method: 'DELETE',
+                    headers: { ...H, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tg_user_id: tgId, product_id: pid })
+                });
+                myReminders.delete(pid);
+                showToast('Нагадування скасовано');
+            } catch (e) {
+                showToast('Помилка зʼєднання');
+            }
+            closeReminderModal();
             updateReminderBtn();
         }
 
