@@ -3525,7 +3525,8 @@
                 recipient_surname: rSurname || '',
                 recipient_phone: rPhone || '',
                 items: cart.map(i => ({ id: i.id, sku: i.sku || '', name: i.name, price: i.price, qty: i.qty, image: i.image || '' })),
-                total: cart.reduce((s, i) => s + i.price * i.qty, 0)
+                total: cart.reduce((s, i) => s + i.price * i.qty, 0),
+                tg_user_id: getTgUserId()
             };
 
             try {
