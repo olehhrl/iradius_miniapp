@@ -3710,6 +3710,9 @@
         let lbLastX = 0, lbLastY = 0, lbStartTx = 0, lbStartTy = 0;
         let lbMode = null; // 'pan' | 'pinch' | null
         let lbLastTap = 0;
+        // Фокальна точка щипка: незмінне положення layout-кута картинки (L0,T0)
+        // та локальні координати точки під пальцями (focalPx/Py) — щоб масштаб ішов саме звідти.
+        let lbL0 = 0, lbT0 = 0, lbFocalPx = 0, lbFocalPy = 0;
 
         function lbApply() {
             const img = document.getElementById('lightbox-img');
@@ -3737,6 +3740,14 @@
                     lbMode = 'pinch';
                     lbStartDist = _dist(e.touches[0], e.touches[1]);
                     lbStartScale = lbScale;
+                    // Фіксуємо точку щипка (середину між пальцями) як центр масштабування
+                    const rect = img.getBoundingClientRect();
+                    lbL0 = rect.left - lbTx;   // layout-позиція кута 0,0 (без трансформ)
+                    lbT0 = rect.top  - lbTy;
+                    const fx0 = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                    const fy0 = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                    lbFocalPx = (fx0 - rect.left) / lbScale;  // локальна точка під пальцями
+                    lbFocalPy = (fy0 - rect.top)  / lbScale;
                 } else if (e.touches.length === 1) {
                     // double-tap?
                     const now = Date.now();
@@ -3771,6 +3782,12 @@
                     e.preventDefault();
                     const d = _dist(e.touches[0], e.touches[1]);
                     lbScale = Math.min(5, Math.max(1, lbStartScale * (d / lbStartDist)));
+                    // Тримаємо точку щипка під пальцями: посуваємо картинку так, щоб
+                    // локальна точка (focalPx/Py) лишалась під поточною серединою пальців.
+                    const fxc = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                    const fyc = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                    lbTx = fxc - lbL0 - lbFocalPx * lbScale;
+                    lbTy = fyc - lbT0 - lbFocalPy * lbScale;
                     lbApply();
                 } else if (lbMode === 'pan' && e.touches.length === 1 && lbScale > 1) {
                     e.preventDefault();
