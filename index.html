@@ -302,6 +302,8 @@
         body.large-text .bottom-nav { padding-top: 6px; }
         body.large-text .nav-item { font-size: 11px; }
         body.large-text .nav-icon { font-size: 22px; }
+        /* Мініатюра товару в історії замовлень */
+        .order-thumb { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; background: var(--bg); }
     </style>
 </head>
 <body>
@@ -2487,6 +2489,19 @@
         // Зберігаємо дані замовлень глобально щоб не передавати через onclick атрибути
         const ordersProductsMap = {};
 
+        // Якщо фото товару в історії не завантажилось — замінюємо на іконку-заглушку 🦷
+        function orderImgFallback(el) {
+            el.onerror = null;
+            const ph = document.createElement('div');
+            ph.className = 'order-thumb';
+            ph.style.display = 'flex';
+            ph.style.alignItems = 'center';
+            ph.style.justifyContent = 'center';
+            ph.style.fontSize = '18px';
+            ph.textContent = '🦷';
+            if (el.parentNode) el.parentNode.replaceChild(ph, el);
+        }
+
         function renderOrders(orders) {
             const wrap = document.getElementById('profile-orders-wrap');
             if (!orders.length) {
@@ -2540,7 +2555,7 @@
                     const imgUrl = (typeof p.image === 'string') ? p.image : '';
                     const ph = `<div style="width:42px;height:42px;border-radius:8px;border:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🦷</div>`;
                     const img = imgUrl
-                        ? `<img src="${imgUrl}" loading="lazy" onerror="this.outerHTML='${ph.replace(/'/g, "\\'")}'" style="width:42px;height:42px;border-radius:8px;object-fit:cover;border:1px solid var(--border);flex-shrink:0;background:var(--bg);">`
+                        ? `<img src="${imgUrl}" loading="lazy" onerror="orderImgFallback(this)" class="order-thumb">`
                         : ph;
                     return `<div ${openAttr} style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);">`
                          + img
