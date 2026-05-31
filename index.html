@@ -2568,7 +2568,7 @@
                 html += `
                 <div style="background:white;border-radius:14px;border:1.5px solid var(--border);padding:14px;box-shadow:var(--shadow);">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                        <div style="font-size:13px;font-weight:700;">Замовлення #${o.id}</div>
+                        <div style="font-size:13px;font-weight:700;">Замовлення #${o.number || o.id}</div>
                         <div style="font-size:11px;color:var(--text-muted);">${o.created_at}</div>
                     </div>
                     <div style="margin-bottom:8px;"><span style="display:inline-block;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;${stColor}">${status}</span></div>
