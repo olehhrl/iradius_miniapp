@@ -7,7 +7,7 @@
     <!-- Прогрів TLS до сервера фото та API: економить ~150-300мс на першу картинку. -->
     <link rel="preconnect" href="https://iradius.com.ua" crossorigin>
     <link rel="dns-prefetch" href="https://iradius.com.ua">
-    <link rel="preconnect" href="https://thumb-scrubbed-unsent.ngrok-free.dev" crossorigin>
+    <link rel="preconnect" href="https://api.iradius-shop.com" crossorigin>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -678,7 +678,7 @@
             } catch (e) {}
         }
 
-        const SERVER_URL = "https://thumb-scrubbed-unsent.ngrok-free.dev";
+        const SERVER_URL = "https://api.iradius-shop.com";
         const LIMIT = 20;
         const H = { "ngrok-skip-browser-warning": "1" };
 
