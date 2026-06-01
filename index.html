@@ -977,6 +977,7 @@
         }
 
         function openGroup(id, name, hasChildren) {
+            window.scrollTo(0, 0);  // нова (під)категорія завжди відкривається згори сторінки
             currentGroupId = id;
             groupStack.push({ id, name });
             renderBreadcrumb();
