@@ -692,6 +692,7 @@
         let allGroups = [];
         let groupStack = [];
         let detailReturnPage = 'main';   // куди повертатись із картки товару
+        let detailReturnScroll = 0;      // позиція прокрутки списку, щоб повернутись на те саме місце
 
         // Persistent storage
         let favorites = JSON.parse(localStorage.getItem('ir_favorites') || '[]');
@@ -838,6 +839,8 @@
                     document.getElementById('headerTitle').textContent = groupStack.length > 0 ? groupStack[groupStack.length-1].name : '🦷 IRadius Dental Shop';
                     document.getElementById('btnBack').style.display = groupStack.length > 0 ? 'block' : 'none';
                 }
+                // Повертаємось на те саме місце списку, де була відкрита картка
+                requestAnimationFrame(() => window.scrollTo(0, detailReturnScroll));
             } else if (document.getElementById('page-products').style.display !== 'none') {
                 if (groupStack.length > 0) {
                     groupStack.pop();
@@ -2197,11 +2200,14 @@
             // Запам'ятовуємо, з якої сторінки відкрили картку — щоб коректно повернутись
             const visible = pages.find(pg => document.getElementById(pg).style.display !== 'none');
             detailReturnPage = visible ? visible.replace('page-', '') : 'main';
+            // Запам'ятовуємо позицію прокрутки списку — щоб при поверненні стати на те саме місце
+            detailReturnScroll = window.scrollY || document.documentElement.scrollTop || 0;
             // Трекінг перегляду для сортування «Популярні» (не блокує відкриття картки)
             if (id) {
                 fetch(SERVER_URL + '/track/view/' + encodeURIComponent(id), { method: 'POST', headers: H }).catch(() => {});
             }
             showPage('detail');
+            window.scrollTo(0, 0);   // саму картку відкриваємо згори
             document.getElementById('btnBack').style.display = 'block';
             document.getElementById('headerTitle').textContent = 'Картка товару';
             document.getElementById('detail-img-wrap').innerHTML = '<div class="spinner"></div>';
