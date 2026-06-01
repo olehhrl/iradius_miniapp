@@ -1080,16 +1080,36 @@
             loadProducts(1, groupId);
         }
 
-        async function loadGroupsFromServer() {
+        async function loadGroupsFromServer(attempt = 1) {
+            const MAX_ATTEMPTS = 3;
+            // Показуємо легкий "вантажимо" поки тривають спроби (а не порожнечу/стару помилку)
+            if (attempt === 1) {
+                document.getElementById('categories-grid').innerHTML =
+                    '<div style="grid-column:1/-1" class="state-box"><div class="spinner"></div><p>Завантаження каталогу…</p></div>';
+            }
             try {
-                const res = await fetch(SERVER_URL + '/groups', { headers: H });
+                // Таймаут на запит, щоб "завислий" ngrok не блокував назавжди, а пішов у ретрай
+                const ctrl = new AbortController();
+                const to = setTimeout(() => ctrl.abort(), 12000);
+                const res = await fetch(SERVER_URL + '/groups', { headers: H, signal: ctrl.signal });
+                clearTimeout(to);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
                 const data = await res.json();
                 allGroups = data.groups || [];
+                if (!allGroups.length) throw new Error('empty groups');
                 renderGroups(getRootGroups());
                 renderRecentlyViewed();
-            } catch {
+            } catch (e) {
+                // Тимчасові збої (ngrok перепідключення тощо) — кілька авто-спроб із паузою
+                if (attempt < MAX_ATTEMPTS) {
+                    await new Promise(r => setTimeout(r, 700 * attempt));
+                    return loadGroupsFromServer(attempt + 1);
+                }
                 document.getElementById('categories-grid').innerHTML =
-                    '<div style="grid-column:1/-1" class="state-box"><div class="icon">⚠️</div><p>Помилка завантаження</p></div>';
+                    '<div style="grid-column:1/-1" class="state-box"><div class="icon">⚠️</div>'
+                  + '<p>Не вдалося завантажити каталог.<br>Перевірте інтернет і спробуйте ще раз.</p>'
+                  + '<button onclick="loadGroupsFromServer()" style="margin-top:14px;padding:11px 22px;background:var(--teal);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">🔄 Спробувати ще раз</button>'
+                  + '</div>';
             }
         }
 
