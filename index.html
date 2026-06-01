@@ -3130,8 +3130,12 @@
                 total += itemTotal;
                 const unavailableStyle = item.unavailable ? 'opacity:0.5;' : '';
                 html += '<div class="cart-item" style="' + unavailableStyle + '">';
+                // id може бути не лише числом (товари з повторного замовлення мають рядковий
+                // id типу 'unfound_..._0.73'). Тому передаємо його як РЯДОК у лапках з екрануванням,
+                // інакше onclick ламається (ReferenceError) і кнопки −/🗑 перестають працювати.
+                const idJs = "'" + String(item.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
                 // Фото + назва клікабельні → відкривають картку товару
-                const openHandler = 'openDetail(' + item.id + ', \'' + (item.sku || '').replace(/\'/g,"\\\'") + '\')';
+                const openHandler = 'openDetail(' + idJs + ', \'' + (item.sku || '').replace(/\'/g,"\\\'") + '\')';
                 if (item.image) {
                     html += '<img class="cart-item-img" id="cart-img-' + item.id + '" src="" style="display:none;cursor:pointer" onclick="' + openHandler + '">';
                     html += '<div class="cart-item-img-placeholder" id="cart-ph-' + item.id + '" style="cursor:pointer" onclick="' + openHandler + '">🦷</div>';
@@ -3150,11 +3154,11 @@
                 html += '</div>';
                 html += '<div class="cart-item-right">';
                 html += '<div class="qty-control">';
-                html += '<button class="qty-btn" onclick="changeQty(' + item.id + ', -1)">−</button>';
+                html += '<button class="qty-btn" onclick="changeQty(' + idJs + ', -1)">−</button>';
                 html += '<span class="qty-num">' + item.qty + '</span>';
-                html += '<button class="qty-btn" onclick="changeQty(' + item.id + ', 1)">+</button>';
+                html += '<button class="qty-btn" onclick="changeQty(' + idJs + ', 1)">+</button>';
                 html += '</div>';
-                html += '<button class="cart-item-remove" onclick="removeFromCart(' + item.id + ')">🗑</button>';
+                html += '<button class="cart-item-remove" onclick="removeFromCart(' + idJs + ')">🗑</button>';
                 html += '</div></div>';
             }
             html += '</div>';
