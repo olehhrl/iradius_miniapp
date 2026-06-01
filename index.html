@@ -654,9 +654,11 @@
             const dx = t.clientX - _swipeX;
             const dy = Math.abs(t.clientY - _swipeY);
             const dt = Date.now() - _swipeT;
-            // Достатній рух праворуч, майже горизонтальний, доволі швидкий, і не на головній
+            // Достатній рух праворуч, майже горизонтальний, доволі швидкий.
+            // Не спрацьовує лише в корені каталогу (page-main + порожній groupStack) —
+            // там свайп назад = вихід із застосунку (обробляє Telegram).
             if (dx > 70 && dy < 50 && dt < 500 &&
-                document.getElementById('page-main').style.display === 'none') {
+                (document.getElementById('page-main').style.display === 'none' || groupStack.length > 0)) {
                 haptic('light');
                 goBack();
             }
@@ -777,7 +779,9 @@
         function showPage(name) {
             pages.forEach(id => document.getElementById(id).style.display = 'none');
             document.getElementById('page-' + name).style.display = 'block';
-            syncBackButton(name === 'main');
+            // Кнопку "назад" ховаємо лише в корені каталогу. Усередині категорії з підкатегоріями
+            // (теж рендериться на page-main) кнопка має лишатись, інакше Telegram закриє застосунок.
+            syncBackButton(name === 'main' && groupStack.length === 0);
             // Пошуковий рядок тільки на каталозі та результатах пошуку
             toggleSearchBar(name === 'main' || name === 'products');
         }
@@ -799,6 +803,8 @@
 
         // --- NAV ---
         function goHome() {
+            groupStack = [];
+            currentGroupId = null;
             showPage('main');
             clearSearch();
             document.getElementById('btnBack').style.display = 'none';
@@ -807,8 +813,6 @@
             const rpw = document.getElementById('root-products-wrap');
             if (rpw) rpw.style.display = 'none';
             isSearchMode = false;
-            groupStack = [];
-            currentGroupId = null;
             renderGroups(getRootGroups());
             renderBreadcrumb();
             setNav('nav-catalog');
@@ -847,9 +851,24 @@
                     document.getElementById('headerTitle').textContent = groupStack.length > 0 ? title : '🦷 IRadius Dental Shop';
                     if (groupStack.length === 0) document.getElementById('btnBack').style.display = 'none';
                     if (parentId) loadRootProducts(parentId);
+                    window.scrollTo(0, 0);
                 } else {
                     goHome();
                 }
+            } else if (document.getElementById('page-main').style.display !== 'none' && groupStack.length > 0) {
+                // Категорія з підкатегоріями (рендериться на page-main) — крок рівно на рівень вище
+                groupStack.pop();
+                if (groupStack.length === 0) { goHome(); return; }
+                const parentId = groupStack[groupStack.length - 1].id;
+                currentGroupId = parentId;
+                showPage('main');
+                renderGroups(getChildGroups(parentId));
+                renderBreadcrumb();
+                const title = groupStack[groupStack.length - 1].name;
+                document.getElementById('catalog-title').textContent = title;
+                document.getElementById('headerTitle').textContent = title;
+                loadRootProducts(parentId);
+                window.scrollTo(0, 0);
             } else if (document.getElementById('page-favorites').style.display !== 'none' ||
                        document.getElementById('page-cart').style.display !== 'none') {
                 goHome();
@@ -858,26 +877,7 @@
             }
         }
 
-        // --- СВАЙП «НАЗАД» (від лівого краю вправо), як на Android/iOS ---
-        (function() {
-            let sx = 0, sy = 0, edge = false, t0 = 0;
-            document.addEventListener('touchstart', e => {
-                const t = e.touches[0];
-                sx = t.clientX; sy = t.clientY; t0 = Date.now();
-                edge = sx <= 30;            // старт біля лівого краю
-            }, { passive: true });
-            document.addEventListener('touchend', e => {
-                if (!edge) return;
-                const t = e.changedTouches[0];
-                const dx = t.clientX - sx, dy = Math.abs(t.clientY - sy);
-                const dt = Date.now() - t0;
-                // горизонтальний рух вправо, майже без вертикального, досить швидко
-                if (dx > 60 && dy < 50 && dt < 600) {
-                    const back = document.getElementById('btnBack');
-                    if (back && back.style.display !== 'none') { goBack(); haptic && haptic('light'); }
-                }
-            }, { passive: true });
-        })();
+        // (єдиний свайп-хендлер «назад» — вище; дубль прибрано, щоб не було подвійного goBack)
 
         // --- GROUPS ---
         function getRootGroups() {
