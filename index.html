@@ -1276,6 +1276,14 @@
             // Окремий таймер на закриття клавіатури — 2с без вводу.
             keyboardDismissTimer = setTimeout(() => {
                 dismissKeyboard();
+                // Аналітика: фіксуємо завершений пошуковий запит (а не кожну літеру). Fire-and-forget.
+                try {
+                    fetch(SERVER_URL + '/track/search', {
+                        method: 'POST',
+                        headers: { ...H, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ q })
+                    }).catch(() => {});
+                } catch (e) {}
             }, 2000);
         });
         // Надійне знаття клавіатури на iOS WebView. Простий blur() не спрацьовує —
@@ -2202,10 +2210,6 @@
             detailReturnPage = visible ? visible.replace('page-', '') : 'main';
             // Запам'ятовуємо позицію прокрутки списку — щоб при поверненні стати на те саме місце
             detailReturnScroll = window.scrollY || document.documentElement.scrollTop || 0;
-            // Трекінг перегляду для сортування «Популярні» (не блокує відкриття картки)
-            if (id) {
-                fetch(SERVER_URL + '/track/view/' + encodeURIComponent(id), { method: 'POST', headers: H }).catch(() => {});
-            }
             showPage('detail');
             window.scrollTo(0, 0);   // саму картку відкриваємо згори
             document.getElementById('btnBack').style.display = 'block';
@@ -2233,6 +2237,14 @@
                 const p = data.product;
                 currentProductData = p;
                 if (!p) { document.getElementById('detail-name').textContent = 'Товар не знайдено'; return; }
+
+                // Трекінг перегляду: популярність + денна статистика (з назвою для звіту). Fire-and-forget.
+                try {
+                    if (p.id) {
+                        fetch(SERVER_URL + '/track/view/' + encodeURIComponent(p.id) + '?name=' + encodeURIComponent(p.name || ''),
+                              { method: 'POST', headers: H }).catch(() => {});
+                    }
+                } catch (e) {}
 
                 // RECENTLY VIEWED: записуємо в localStorage (унікальні по id, останніх 10)
                 try {
@@ -3907,6 +3919,14 @@
         // Підвантажуємо підписки користувача у фоні (для синхронізації кнопки 🔔)
         loadMyReminders();
         updateBadges();
+        // Аналітика: фіксуємо відкриття мініапу (унікальні/відкриття/новачки) — fire-and-forget
+        try {
+            fetch(SERVER_URL + '/track/open', {
+                method: 'POST',
+                headers: { ...H, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tg_user_id: getTgUserId() })
+            }).catch(() => {});
+        } catch (e) {}
         (async () => {
             await loadGroupsFromServer();
             // Deep-link: ?p=PRODUCT_ID — відкриваємо картку товару одразу.
