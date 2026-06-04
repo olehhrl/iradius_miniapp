@@ -3609,11 +3609,21 @@
                     cart = [];
                     saveCart();
                     updateBadges();
+                    // Якщо Telegram-id не визначився (магазин відкрито поза ботом) — м'яко просимо
+                    // відкрити через бот, щоб клієнт міг отримати реквізити/статус прямо в Telegram.
+                    const tgNote = !getTgUserId()
+                        ? `<div style="margin-top:14px;padding:12px 14px;background:#fff8e1;border:1.5px solid #ffc107;border-radius:12px;font-size:13px;color:#795548;text-align:left;line-height:1.5;">
+                               ⚠️ Щоб отримати <b>реквізити для оплати</b> та статус замовлення прямо в Telegram —
+                               відкрийте магазин через кнопку <b>«🛍 Магазин»</b> у боті <b>@iradius_dental_bot</b>
+                               і поділіться номером. Інакше ми зв'яжемось із вами за телефоном.
+                           </div>`
+                        : '';
                     document.getElementById('cart-items-wrap').innerHTML = `
                         <div class="success-box">
                             <div class="icon">✅</div>
                             <h2>Замовлення прийнято!</h2>
                             <p>Ми звʼяжемось з вами найближчим часом.<br>Дякуємо за покупку!</p>
+                            ${tgNote}
                             <button class="btn-back-catalog" onclick="goHome()">До каталогу</button>
                         </div>`;
                     document.getElementById('order-form-wrap').innerHTML = '';
