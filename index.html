@@ -2529,7 +2529,8 @@
         }
         // Нативне вікно «поділитися номером» — повертає ВЛАСНИЙ номер клієнта (його акаунта, не довільний).
         // Номер беремо прямо з відповіді події (не залежимо від initData, який у Web буває порожнім).
-        function shareContact() {
+        function shareContact(onDone) {
+            const done = () => { try { (typeof onDone === 'function' ? onDone : renderCart)(); } catch (e) {} };
             try {
                 if (Telegram.WebApp && Telegram.WebApp.requestContact) {
                     const handler = (data) => {
@@ -2540,7 +2541,8 @@
                                 if (!ph.startsWith('+')) ph = '+' + ph;
                                 verifiedPhone = ph;
                                 showToast('Дякуємо!');
-                                renderCart();
+                                // невелика пауза — щоб бот встиг зберегти контакт (для нових клієнтів)
+                                setTimeout(done, 1300);
                             }
                         } catch (e) {}
                         try { Telegram.WebApp.offEvent('contactRequested', handler); } catch (e) {}
@@ -2574,16 +2576,16 @@
             }
             wrap.innerHTML = '<div class="state-box"><div class="spinner"></div><p>Завантаження...</p></div>';
             try {
-                const res = await fetch(SERVER_URL + '/orders?init_data=' + encodeURIComponent(tgInitData), { headers: H });
+                // 1) initData (надійно). Якщо його нема (Desktop/Web) — сервер прийме підтверджений
+                //    номер, але лише якщо він уже зареєстрований у боті (поділився контактом).
+                let url = SERVER_URL + '/orders?init_data=' + encodeURIComponent(tgInitData || '');
+                if (verifiedPhone) url += '&phone=' + encodeURIComponent(verifiedPhone);
+                const res = await fetch(url, { headers: H });
                 const data = await res.json();
-                if (data.no_phone) {
+                if (data.auth_required || data.no_phone) {
                     wrap.innerHTML = '<div class="state-box"><div class="icon">📱</div>'
-                        + '<p>Поділіться номером телефону, щоб бачити свої замовлення.</p>'
-                        + '<button onclick="shareContact()" style="margin-top:14px;padding:11px 22px;background:var(--teal);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">📱 Поділитися номером</button></div>';
-                    return;
-                }
-                if (data.auth_required) {
-                    wrap.innerHTML = '<div class="state-box"><div class="icon">🔒</div><p>Відкрийте магазин через бота, щоб бачити замовлення.</p></div>';
+                        + '<p>Поділіться своїм номером, щоб побачити свої замовлення.</p>'
+                        + '<button onclick="shareContact(loadOrders)" style="margin-top:14px;padding:11px 22px;background:var(--teal);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">📱 Поділитися номером</button></div>';
                     return;
                 }
                 renderOrders(data.orders || []);
