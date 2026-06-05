@@ -2500,34 +2500,53 @@
         const userPhone = localStorage.getItem('ir_phone') || '';
 
         // --- ІДЕНТИЧНІСТЬ (Telegram) ---
-        // initData — підписаний Telegram рядок. Якщо порожній → відкрито поза Telegram (браузер).
+        // initData — підписаний рядок (для серверної перевірки історії). Може бути порожнім у Web/меню-кнопці.
         const tgInitData = (window.Telegram && Telegram.WebApp && Telegram.WebApp.initData) || '';
-        let verifiedPhone = '';   // підтверджений номер клієнта (з сервера за initData)
+        let verifiedPhone = '';   // підтверджений власний номер клієнта
+
+        // Надійний детектор «я всередині Telegram»: поза Telegram platform === 'unknown'.
+        function inTelegram() {
+            try {
+                const p = Telegram.WebApp.platform;
+                return !!p && p !== 'unknown';
+            } catch (e) { return false; }
+        }
 
         async function fetchMe() {
             if (!tgInitData) return null;
             try {
                 const r = await fetch(SERVER_URL + '/me?init_data=' + encodeURIComponent(tgInitData), { headers: H });
                 const d = await r.json();
-                if (d && d.ok) verifiedPhone = d.phone || '';
+                if (d && d.ok && d.phone) verifiedPhone = d.phone;
                 return d;
             } catch { return null; }
         }
         function openBotDeepLink() {
             const url = 'https://t.me/iradius_dental_bot';
-            try { if (window.Telegram && Telegram.WebApp && Telegram.WebApp.openTelegramLink) { Telegram.WebApp.openTelegramLink(url); return; } } catch (e) {}
+            try { if (Telegram.WebApp && Telegram.WebApp.openTelegramLink) { Telegram.WebApp.openTelegramLink(url); return; } } catch (e) {}
+            try { window.location.href = url; return; } catch (e) {}
             window.open(url, '_blank');
         }
-        // Нативне вікно «поділитися номером» — повертає ВЛАСНИЙ підтверджений номер клієнта.
+        // Нативне вікно «поділитися номером» — повертає ВЛАСНИЙ номер клієнта (його акаунта, не довільний).
+        // Номер беремо прямо з відповіді події (не залежимо від initData, який у Web буває порожнім).
         function shareContact() {
             try {
                 if (Telegram.WebApp && Telegram.WebApp.requestContact) {
-                    Telegram.WebApp.requestContact(function (ok) {
-                        if (ok) {
-                            showToast('Дякуємо! Оновлюємо…');
-                            setTimeout(async () => { await fetchMe(); renderCart(); }, 1800);
-                        }
-                    });
+                    const handler = (data) => {
+                        try {
+                            const c = data && data.responseUnsafe && data.responseUnsafe.contact;
+                            if (c && c.phone_number) {
+                                let ph = String(c.phone_number).replace(/\s/g, '');
+                                if (!ph.startsWith('+')) ph = '+' + ph;
+                                verifiedPhone = ph;
+                                showToast('Дякуємо!');
+                                renderCart();
+                            }
+                        } catch (e) {}
+                        try { Telegram.WebApp.offEvent('contactRequested', handler); } catch (e) {}
+                    };
+                    try { Telegram.WebApp.onEvent('contactRequested', handler); } catch (e) {}
+                    Telegram.WebApp.requestContact();
                     return;
                 }
             } catch (e) {}
@@ -2547,7 +2566,7 @@
             const wrap = document.getElementById('profile-orders-wrap');
             // Історію віддаємо ЛИШЕ за підтвердженим Telegram-підписом (не за номером у URL) —
             // інакше можна було б побачити чужі замовлення.
-            if (!tgInitData) {
+            if (!inTelegram()) {
                 wrap.innerHTML = '<div class="state-box"><div class="icon">🔒</div>'
                     + '<p>Щоб бачити свої замовлення, відкрийте магазин у Telegram через бота.</p>'
                     + '<button onclick="openBotDeepLink()" style="margin-top:14px;padding:11px 22px;background:var(--teal);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">Відкрити в Telegram</button></div>';
@@ -3294,7 +3313,7 @@
                 return;
             }
             // Оформлення — лише в Telegram (щоб підтвердити особу й номер). У браузері — пропозиція відкрити бота.
-            if (!tgInitData) {
+            if (!inTelegram()) {
                 formWrap.innerHTML = `
                     <div class="order-form">
                       <div style="padding:16px;background:#fff8e1;border:1.5px solid #ffc107;border-radius:12px;font-size:14px;color:#795548;line-height:1.55;text-align:center;">
@@ -3542,7 +3561,7 @@
             const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
             if (total < 400) { showToast('Мінімальне замовлення 400 грн'); return; }
             // Оформлення лише в Telegram із підтвердженим власним номером
-            if (!tgInitData) { showToast('Оформлення доступне лише в Telegram'); openBotDeepLink(); return; }
+            if (!inTelegram()) { showToast('Оформлення доступне лише в Telegram'); openBotDeepLink(); return; }
             if (!verifiedPhone) { showToast('Спочатку поділіться своїм номером'); shareContact(); return; }
             const name = document.getElementById('f-name').value.trim();
             const surname = document.getElementById('f-surname').value.trim();
