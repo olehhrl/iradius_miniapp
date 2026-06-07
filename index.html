@@ -117,6 +117,14 @@
         .theme-seg { display: flex; gap: 6px; }
         .theme-seg button { flex: 1; padding: 9px 6px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--white); font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; }
         .theme-seg button.active { background: var(--teal); border-color: var(--teal); color: #fff; }
+        .cart-tabs { display: flex; gap: 6px; padding: 12px 14px 0; overflow-x: auto; scrollbar-width: none; }
+        .cart-tabs::-webkit-scrollbar { display: none; }
+        .cart-tab { flex-shrink: 0; padding: 8px 14px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--white); font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+        .cart-tab.active { background: var(--teal); border-color: var(--teal); color: #fff; }
+        .cart-tab-n { display: inline-block; min-width: 16px; padding: 0 4px; margin-left: 2px; border-radius: 10px; background: rgba(0,0,0,0.15); font-size: 11px; }
+        .cart-tab-add { font-size: 16px; font-weight: 700; color: var(--teal-dark); padding: 8px 12px; }
+        .cart-actions-row { display: flex; gap: 12px; padding: 8px 16px 0; }
+        .cart-actions-row button { background: none; border: none; color: var(--text-muted); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; }
         .profile-tabs { display: flex; gap: 8px; padding: 12px 14px 4px; }
         .profile-tab { flex: 1; padding: 10px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--white); font-size: 13px; font-weight: 700; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
         .profile-tab.active { background: var(--teal); border-color: var(--teal); color: #fff; }
@@ -551,6 +559,18 @@
         </div>
     </div>
 
+    <!-- МОДАЛКА ПЕРЕЙМЕНУВАННЯ КОШИКА -->
+    <div id="rename-cart-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:760;align-items:flex-end;justify-content:center;" onclick="closeRenameCart()">
+        <div style="background:var(--white);border-radius:20px 20px 0 0;padding:22px 18px 22px;width:100%;max-width:480px;" onclick="event.stopPropagation()">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                <div style="font-size:17px;font-weight:800;color:var(--text);">✏️ Назва кошика</div>
+                <button onclick="closeRenameCart()" style="background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;line-height:1;padding:0 4px;">✕</button>
+            </div>
+            <input id="rename-cart-input" class="form-input" maxlength="30" placeholder="Напр. Кабінет 1" style="margin-bottom:14px;">
+            <button onclick="saveRenameCart()" style="width:100%;padding:13px;background:var(--teal);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Зберегти</button>
+        </div>
+    </div>
+
     <!-- FAVORITES -->
     <div id="page-favorites">
         <div id="favorites-container"></div>
@@ -746,7 +766,32 @@
         // Persistent storage
         let favorites = JSON.parse(localStorage.getItem('ir_favorites') || '[]');
         // favorites: [{id, sku}] — зберігаємо обидва щоб завантажувати правильно
-        let cart = JSON.parse(localStorage.getItem('ir_cart') || '[]');
+        // --- МУЛЬТИ-КОШИК ---
+        // Кілька названих кошиків. `cart` завжди вказує на товари АКТИВНОГО кошика,
+        // тож увесь наявний код (cart.push / cart.filter / saveCart) працює без змін.
+        const CARTS_KEY = 'ir_carts';
+        const ACTIVE_CART_KEY = 'ir_active_cart';
+        function _loadCarts() {
+            try {
+                const raw = JSON.parse(localStorage.getItem(CARTS_KEY) || 'null');
+                if (Array.isArray(raw) && raw.length) {
+                    return raw.map(c => ({ id: c.id, name: c.name || 'Кошик', items: Array.isArray(c.items) ? c.items : [] }));
+                }
+            } catch (e) {}
+            // Міграція зі старого одинарного кошика (ir_cart)
+            let legacy = [];
+            try { legacy = JSON.parse(localStorage.getItem('ir_cart') || '[]'); } catch (e) {}
+            return [{ id: 'c' + Date.now(), name: 'Кошик 1', items: Array.isArray(legacy) ? legacy : [] }];
+        }
+        let carts = _loadCarts();
+        let activeCartId = localStorage.getItem(ACTIVE_CART_KEY) || carts[0].id;
+        if (!carts.some(c => c.id === activeCartId)) activeCartId = carts[0].id;
+        function activeCart() { return carts.find(c => c.id === activeCartId) || carts[0]; }
+        function _saveCarts() {
+            try { localStorage.setItem(CARTS_KEY, JSON.stringify(carts)); } catch (e) {}
+            try { localStorage.setItem(ACTIVE_CART_KEY, activeCartId); } catch (e) {}
+        }
+        let cart = activeCart().items;   // товари активного кошика
         // cart item: {id, name, price, qty}
 
         // --- IMAGE BLOB ---
@@ -3047,8 +3092,8 @@
         function clearCart() {
             if (!cart.length) { showToast('Кошик вже порожній'); return; }
             if (!confirm('Очистити кошик? Дані для доставки збережуться.')) return;
-            cart = [];                                               // чистимо ТІЛЬКИ товари
-            localStorage.setItem('ir_cart', JSON.stringify(cart));   // ir_order_data не чіпаємо
+            cart = [];                 // чистимо ТІЛЬКИ товари активного кошика
+            saveCart();                // ir_order_data не чіпаємо
             updateBadges();
             showToast('Кошик очищено');
             renderCart();
@@ -3092,7 +3137,7 @@
             favorites = [];
             cart = [];
             localStorage.setItem('ir_favorites', JSON.stringify(favorites));
-            localStorage.setItem('ir_cart', JSON.stringify(cart));
+            saveCart();   // очищаємо активний кошик у моделі
             updateBadges();
             showToast('Все скинуто ✓');
             showProfile();
@@ -3263,7 +3308,88 @@
 
         // --- CART ---
         function saveCart() {
-            localStorage.setItem('ir_cart', JSON.stringify(cart));
+            // cart міг бути переприсвоєний (filter / = []) — повертаємо його в активний кошик
+            const c = activeCart();
+            if (c) c.items = cart;
+            _saveCarts();
+        }
+
+        // ---- Керування кошиками (мульти-кошик) ----
+        function switchCart(id) {
+            const c = carts.find(x => x.id === id);
+            if (!c) return;
+            const cur = activeCart(); if (cur) cur.items = cart;   // зберегти поточний
+            activeCartId = id;
+            cart = c.items;
+            _saveCarts();
+            updateBadges();
+            renderCart();
+            try { Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch (e) {}
+        }
+        function createCart() {
+            let n = carts.length + 1;
+            const names = new Set(carts.map(c => c.name));
+            while (names.has('Кошик ' + n)) n++;
+            const c = { id: 'c' + Date.now(), name: 'Кошик ' + n, items: [] };
+            carts.push(c);
+            switchCart(c.id);
+            showToast('Створено «' + c.name + '»');
+        }
+        function deleteCart(id) {
+            if (carts.length <= 1) { showToast('Це єдиний кошик'); return; }
+            const c = carts.find(x => x.id === id); if (!c) return;
+            if (!confirm('Видалити «' + c.name + '»? Товари в ньому зникнуть.')) return;
+            carts = carts.filter(x => x.id !== id);
+            if (activeCartId === id) { activeCartId = carts[0].id; cart = carts[0].items; }
+            _saveCarts(); updateBadges(); renderCart();
+            showToast('Кошик видалено');
+        }
+        // Видалення після оформлення (без зайвого confirm — товарів уже нема)
+        function deleteActiveCartAfterOrder() {
+            if (carts.length > 1) {
+                carts = carts.filter(x => x.id !== activeCartId);
+                activeCartId = carts[0].id;
+                cart = carts[0].items;
+                _saveCarts(); updateBadges();
+            }
+            goHome();
+        }
+        // Перейменування — через міні-модалку (window.prompt у Telegram WebView ненадійний)
+        let _renameCartId = null;
+        function renameCart(id) {
+            const c = carts.find(x => x.id === id); if (!c) return;
+            _renameCartId = id;
+            const inp = document.getElementById('rename-cart-input');
+            inp.value = c.name;
+            document.getElementById('rename-cart-modal').style.display = 'flex';
+            setTimeout(() => { try { inp.focus(); } catch (e) {} }, 50);
+        }
+        function closeRenameCart() { document.getElementById('rename-cart-modal').style.display = 'none'; }
+        function saveRenameCart() {
+            const c = carts.find(x => x.id === _renameCartId);
+            if (c) {
+                const v = (document.getElementById('rename-cart-input').value || '').trim();
+                if (v) c.name = v.slice(0, 30);
+                _saveCarts();
+            }
+            closeRenameCart(); updateBadges(); renderCart();
+        }
+        // Рядок-перемикач кошиків (показуємо завжди — і коли активний порожній)
+        function cartSelectorHTML() {
+            let h = '<div class="cart-tabs">';
+            for (const c of carts) {
+                const cnt = (c.items || []).reduce((s, i) => s + (i.qty || 0), 0);
+                const act = c.id === activeCartId ? ' active' : '';
+                h += `<button class="cart-tab${act}" onclick="switchCart('${c.id}')">${escapeHtml(c.name)}`
+                   + (cnt ? ` <span class="cart-tab-n">${cnt}</span>` : '') + '</button>';
+            }
+            h += '<button class="cart-tab cart-tab-add" onclick="createCart()" title="Новий кошик">＋</button>';
+            h += '</div>';
+            h += '<div class="cart-actions-row">'
+               + `<button onclick="renameCart('${activeCartId}')">✏️ Перейменувати</button>`
+               + (carts.length > 1 ? `<button onclick="deleteCart('${activeCartId}')">🗑 Видалити кошик</button>` : '')
+               + '</div>';
+            return h;
         }
 
         // Звірка назв — захист від розсинхрону артикулів (KeyCRM ≠ MODX).
@@ -3404,7 +3530,8 @@
             const formWrap = document.getElementById('order-form-wrap');
 
             if (!cart.length) {
-                wrap.innerHTML = '<div class="state-box"><div class="icon">🛒</div><p>Кошик порожній</p>' +
+                wrap.innerHTML = cartSelectorHTML() +
+                    '<div class="state-box"><div class="icon">🛒</div><p>Кошик порожній</p>' +
                     '<button onclick="goHome()" style="margin-top:14px;padding:12px 24px;background:var(--teal);color:white;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">Перейти до каталогу</button>' +
                     '<button onclick="openBulkAdd()" style="display:block;margin:10px auto 0;padding:10px 22px;background:white;color:var(--teal-dark);border:1.5px solid var(--teal);border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;">📋 Додати списком артикулів</button>' +
                     '</div>';
@@ -3413,8 +3540,9 @@
             }
 
             let total = 0;
-            // Кнопка "Додати списком" над товарами
-            let html = '<div style="padding:12px 14px 0;"><button onclick="openBulkAdd()" style="width:100%;padding:10px;background:var(--bg);color:var(--teal-dark);border:1.5px dashed var(--teal);border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;">📋 Додати ще товари списком артикулів</button></div>';
+            // Перемикач кошиків + кнопка "Додати списком" над товарами
+            let html = cartSelectorHTML();
+            html += '<div style="padding:12px 14px 0;"><button onclick="openBulkAdd()" style="width:100%;padding:10px;background:var(--bg);color:var(--teal-dark);border:1.5px dashed var(--teal);border-radius:12px;font-size:13px;font-weight:600;cursor:pointer;">📋 Додати ще товари списком артикулів</button></div>';
             html += '<div class="cart-items">';
             for (const item of cart) {
                 const itemTotal = item.price * item.qty;
@@ -3918,13 +4046,18 @@
                                і поділіться номером. Інакше ми зв'яжемось із вами за телефоном.
                            </div>`
                         : '';
+                    // Мульти-кошик: питаємо, що зробити з цим (уже порожнім) кошиком
+                    const delBtn = (carts.length > 1)
+                        ? `<button onclick="deleteActiveCartAfterOrder()" style="display:block;width:100%;margin:8px 0 0;padding:12px;background:white;color:var(--teal-dark);border:1.5px solid var(--border);border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;">🗑 Видалити кошик «${escapeHtml(activeCart().name)}»</button>`
+                        : '';
                     document.getElementById('cart-items-wrap').innerHTML = `
                         <div class="success-box">
                             <div class="icon">✅</div>
                             <h2>Замовлення прийнято!</h2>
                             <p>Ми звʼяжемось з вами найближчим часом.<br>Дякуємо за покупку!</p>
                             ${tgNote}
-                            <button class="btn-back-catalog" onclick="goHome()">До каталогу</button>
+                            <button class="btn-back-catalog" onclick="goHome()">${(carts.length > 1) ? 'Лишити кошик · до каталогу' : 'До каталогу'}</button>
+                            ${delBtn}
                         </div>`;
                     document.getElementById('order-form-wrap').innerHTML = '';
                 } else {
