@@ -213,6 +213,9 @@
         .qty-control { display: flex; align-items: center; gap: 6px; }
         .qty-btn { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--teal); background: white; color: var(--teal); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
         .qty-num { font-size: 14px; font-weight: 700; min-width: 20px; text-align: center; }
+        .qty-num-input { width: 46px; height: 26px; text-align: center; font-size: 14px; font-weight: 700; border: 1.5px solid var(--teal); border-radius: 6px; padding: 0; outline: none; -moz-appearance: textfield; background: var(--white); color: var(--text); }
+        .qty-num-input::-webkit-outer-spin-button, .qty-num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        body.large-text .qty-num-input { width: 54px; height: 32px; font-size: 16px; }
         .cart-item-remove { background: none; border: none; color: #ccc; font-size: 18px; cursor: pointer; }
         .cart-total { padding: 14px 14px 0; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); margin: 0 14px; }
         .cart-total-label { font-size: 15px; font-weight: 600; }
@@ -3604,7 +3607,7 @@
                 html += '<div class="cart-item-right">';
                 html += '<div class="qty-control">';
                 html += '<button class="qty-btn" onclick="changeQty(' + idJs + ', -1)">−</button>';
-                html += '<span class="qty-num">' + item.qty + '</span>';
+                html += '<input class="qty-num-input" type="number" min="0" value="' + item.qty + '" onclick="this.select()" onchange="setCartQty(' + idJs + ', this.value)">';
                 html += '<button class="qty-btn" onclick="changeQty(' + idJs + ', 1)">+</button>';
                 html += '</div>';
                 html += '<button class="cart-item-remove" onclick="removeFromCart(' + idJs + ')">🗑</button>';
@@ -3757,6 +3760,17 @@
             if (!item) return;
             item.qty += delta;
             if (item.qty <= 0) { cart = cart.filter(i => i.id != id); }
+            saveCart();
+            updateBadges();
+            renderCart();
+        }
+
+        function setCartQty(id, value) {
+            const item = cart.find(i => i.id == id);
+            if (!item) return;
+            let q = parseInt(value, 10);
+            if (isNaN(q) || q <= 0) { cart = cart.filter(i => i.id != id); }
+            else { item.qty = Math.min(q, 999); }
             saveCart();
             updateBadges();
             renderCart();
