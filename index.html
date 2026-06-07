@@ -693,6 +693,27 @@
             _swipeFromEdge = false;
         }, { passive: true });
 
+        // --- СВАЙП МІЖ ВКЛАДКАМИ КАБІНЕТУ (Мої замовлення ⇄ Куплені раніше) ---
+        // Не від лівого краю (там свайп «назад»). Зліва-направо → Куплені раніше; навпаки → Замовлення.
+        let _ptSx = 0, _ptSy = 0, _ptT = 0, _ptActive = false;
+        document.addEventListener('touchstart', (e) => {
+            const prof = document.getElementById('page-profile');
+            if (!prof || prof.style.display === 'none') { _ptActive = false; return; }
+            const t = e.touches[0];
+            _ptSx = t.clientX; _ptSy = t.clientY; _ptT = Date.now();
+            _ptActive = t.clientX > 40;   // ігноруємо рух від краю (свайп «назад»)
+        }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            if (!_ptActive) return; _ptActive = false;
+            const t = e.changedTouches[0];
+            const dx = t.clientX - _ptSx, dy = Math.abs(t.clientY - _ptSy), dt = Date.now() - _ptT;
+            if (Math.abs(dx) < 60 || dy > 50 || dt > 500) return;   // впевнений горизонтальний свайп
+            const cur = document.querySelector('.profile-tab.active');
+            const curTab = cur ? cur.getAttribute('data-tab') : 'orders';
+            if (dx > 0 && curTab === 'orders') { switchProfileTab('purchased'); haptic('light'); }
+            else if (dx < 0 && curTab === 'purchased') { switchProfileTab('orders'); haptic('light'); }
+        }, { passive: true });
+
         // Нативна кнопка "Назад" у шапці Telegram (дублює свайп)
         try {
             if (tg.BackButton) {
