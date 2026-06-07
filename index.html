@@ -114,9 +114,9 @@
         .tile-img { width: 100%; height: 100%; object-fit: contain; padding: 8px; }
         .tile-img-placeholder { font-size: 48px; }
         .tile-badge { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.72); color: #fff; font-size: 10px; font-weight: 700; padding: 3px 7px; border-radius: 20px; z-index: 2; white-space: nowrap; }
-        .purch-folder { margin: 10px 14px 0; padding: 12px 14px; background: var(--white); border: 1.5px solid var(--border); border-radius: 12px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; box-shadow: var(--shadow); font-size: 14px; font-weight: 700; color: var(--text); }
-        .purch-folder .chev { transition: transform 0.2s; color: var(--text-muted); font-size: 16px; }
-        .purch-folder.open .chev { transform: rotate(90deg); }
+        .profile-tabs { display: flex; gap: 8px; padding: 12px 14px 4px; }
+        .profile-tab { flex: 1; padding: 10px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--white); font-size: 13px; font-weight: 700; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
+        .profile-tab.active { background: var(--teal); border-color: var(--teal); color: #fff; }
         .purch-sort { display: flex; gap: 6px; padding: 10px 14px 4px; overflow-x: auto; scrollbar-width: none; }
         .purch-sort button { flex-shrink: 0; padding: 6px 12px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--white); font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
         .purch-sort button.active { background: var(--teal); border-color: var(--teal); color: #fff; }
@@ -575,24 +575,23 @@
                 💡 Запропонувати покращення / повідомити про помилку
             </button>
         </div>
-        <!-- Куплені раніше (згортна папка) -->
-        <div class="purch-folder" id="purch-folder" style="display:none;" onclick="togglePurchased()">
-            <span>🔁 Куплені раніше</span>
-            <span class="chev">▸</span>
+        <!-- Вкладки кабінету -->
+        <div class="profile-tabs">
+            <button class="profile-tab active" data-tab="orders" onclick="switchProfileTab('orders')">🧾 Мої замовлення</button>
+            <button class="profile-tab" data-tab="purchased" onclick="switchProfileTab('purchased')">🔁 Куплені раніше</button>
         </div>
-        <div id="purchased-body" style="display:none;">
+        <!-- Вкладка: Мої замовлення -->
+        <div id="tab-orders" style="display:block;">
+            <div id="profile-orders-wrap"></div>
+        </div>
+        <!-- Вкладка: Куплені раніше -->
+        <div id="tab-purchased" style="display:none;">
             <div class="purch-sort" id="purch-sort">
                 <button data-sort="count" class="active" onclick="setPurchSort('count')">🔢 За кількістю</button>
                 <button data-sort="date" onclick="setPurchSort('date')">🕐 За датою</button>
                 <button data-sort="name" onclick="setPurchSort('name')">🔤 За назвою</button>
             </div>
             <div id="purchased-wrap"></div>
-        </div>
-
-        <div class="section-title" style="padding:10px 14px 0;">🧾 Мої замовлення</div>
-        <!-- Замовлення -->
-        <div id="tab-orders" style="display:block;">
-            <div id="profile-orders-wrap"></div>
         </div>
     </div>
 
@@ -2699,13 +2698,13 @@
 
         function renderOrders(orders) {
             const wrap = document.getElementById('profile-orders-wrap');
-            // Папка «Куплені раніше» — будуємо з тих самих замовлень, але ліниво (по розгортанню).
+            // Вкладка «Куплені раніше» будується з тих самих замовлень, але ліниво (при відкритті вкладки).
             lastOrders = orders || [];
             purchasedLoaded = false;
-            const _pf = document.getElementById('purch-folder');
-            const _pb = document.getElementById('purchased-body');
-            if (_pb) _pb.style.display = 'none';
-            if (_pf) { _pf.classList.remove('open'); _pf.style.display = lastOrders.length ? 'flex' : 'none'; }
+            purchasedItems = [];
+            const _pw = document.getElementById('purchased-wrap');
+            if (_pw) _pw.innerHTML = '';
+            switchProfileTab('orders');   // при кожному завантаженні кабінету — на вкладці «Мої замовлення»
             if (!orders.length) {
                 wrap.innerHTML = '<div class="state-box"><div class="icon">📋</div><p>Замовлень не знайдено</p></div>';
                 return;
@@ -2799,13 +2798,14 @@
         let purchasedSort = 'count';  // count | date | name
         let purchasedLoaded = false;
 
-        function togglePurchased() {
-            const body = document.getElementById('purchased-body');
-            const folder = document.getElementById('purch-folder');
-            const willOpen = body.style.display === 'none';
-            body.style.display = willOpen ? 'block' : 'none';
-            folder.classList.toggle('open', willOpen);
-            if (willOpen && !purchasedLoaded) loadPurchased();
+        function switchProfileTab(tab) {
+            document.querySelectorAll('.profile-tab').forEach(b =>
+                b.classList.toggle('active', b.getAttribute('data-tab') === tab));
+            const o = document.getElementById('tab-orders');
+            const p = document.getElementById('tab-purchased');
+            if (o) o.style.display = (tab === 'orders') ? 'block' : 'none';
+            if (p) p.style.display = (tab === 'purchased') ? 'block' : 'none';
+            if (tab === 'purchased' && !purchasedLoaded) loadPurchased();
         }
 
         // Агрегуємо товари з усіх замовлень: дедуп за назвою, рахуємо к-сть покупок і останню дату.
