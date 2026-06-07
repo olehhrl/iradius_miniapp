@@ -113,6 +113,13 @@
         .tile-img-wrap { width: 100%; aspect-ratio: 1; background: var(--bg); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
         .tile-img { width: 100%; height: 100%; object-fit: contain; padding: 8px; }
         .tile-img-placeholder { font-size: 48px; }
+        .tile-badge { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.72); color: #fff; font-size: 10px; font-weight: 700; padding: 3px 7px; border-radius: 20px; z-index: 2; white-space: nowrap; }
+        .purch-folder { margin: 10px 14px 0; padding: 12px 14px; background: var(--white); border: 1.5px solid var(--border); border-radius: 12px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; box-shadow: var(--shadow); font-size: 14px; font-weight: 700; color: var(--text); }
+        .purch-folder .chev { transition: transform 0.2s; color: var(--text-muted); font-size: 16px; }
+        .purch-folder.open .chev { transform: rotate(90deg); }
+        .purch-sort { display: flex; gap: 6px; padding: 10px 14px 4px; overflow-x: auto; scrollbar-width: none; }
+        .purch-sort button { flex-shrink: 0; padding: 6px 12px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--white); font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+        .purch-sort button.active { background: var(--teal); border-color: var(--teal); color: #fff; }
         .tile-actions { position: absolute; top: 6px; right: 6px; display: flex; flex-direction: column; gap: 4px; }
         .tile-btn { width: 30px; height: 30px; border-radius: 50%; border: none; cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.15); background: white; transition: transform 0.1s; }
         .tile-btn:active { transform: scale(0.9); }
@@ -568,6 +575,20 @@
                 💡 Запропонувати покращення / повідомити про помилку
             </button>
         </div>
+        <!-- Куплені раніше (згортна папка) -->
+        <div class="purch-folder" id="purch-folder" style="display:none;" onclick="togglePurchased()">
+            <span>🔁 Куплені раніше</span>
+            <span class="chev">▸</span>
+        </div>
+        <div id="purchased-body" style="display:none;">
+            <div class="purch-sort" id="purch-sort">
+                <button data-sort="count" class="active" onclick="setPurchSort('count')">🔢 За кількістю</button>
+                <button data-sort="date" onclick="setPurchSort('date')">🕐 За датою</button>
+                <button data-sort="name" onclick="setPurchSort('name')">🔤 За назвою</button>
+            </div>
+            <div id="purchased-wrap"></div>
+        </div>
+
         <div class="section-title" style="padding:10px 14px 0;">🧾 Мої замовлення</div>
         <!-- Замовлення -->
         <div id="tab-orders" style="display:block;">
@@ -1977,6 +1998,7 @@
             const imgEsc = rawImg2.replace(/\'/g,"\\\'");
             let html = '<div class="product-tile' + (p.presence !== 'available' ? ' unavailable' : '') + '" onclick="openDetail(' + p.id + ', \'' + (p.sku || '') + '\'  )">';
             html += '<div class="tile-img-wrap">';
+            if (p._badge) html += '<div class="tile-badge">' + p._badge + '</div>';
             // Швидкий шлях: iradius-фото вантажаться напряму браузером (HTTP/2, кеш, паралельно).
             if (rawImg2 && rawImg2.indexOf('https://iradius.com.ua/') === 0) {
                 html += '<img class="tile-img" id="img-' + p.id + '" src="' + catalogImgSrc(rawImg2, p.main_image_full) + '" data-small="' + rawImg2 + '" data-pid="' + p.id + '" loading="lazy" decoding="async" onerror="catalogImgError(this)">';
@@ -2677,6 +2699,13 @@
 
         function renderOrders(orders) {
             const wrap = document.getElementById('profile-orders-wrap');
+            // Папка «Куплені раніше» — будуємо з тих самих замовлень, але ліниво (по розгортанню).
+            lastOrders = orders || [];
+            purchasedLoaded = false;
+            const _pf = document.getElementById('purch-folder');
+            const _pb = document.getElementById('purchased-body');
+            if (_pb) _pb.style.display = 'none';
+            if (_pf) { _pf.classList.remove('open'); _pf.style.display = lastOrders.length ? 'flex' : 'none'; }
             if (!orders.length) {
                 wrap.innerHTML = '<div class="state-box"><div class="icon">📋</div><p>Замовлень не знайдено</p></div>';
                 return;
@@ -2762,6 +2791,94 @@
             // Підтягуємо статус останньої посилки
             const lastTtn = orders.find(o => o.tracking_code);
             if (lastTtn) trackParcel(lastTtn.tracking_code);
+        }
+
+        // ====== КУПЛЕНІ РАНІШЕ (папка в кабінеті) ======
+        let lastOrders = [];          // замовлення з останнього loadOrders (джерело агрегації)
+        let purchasedItems = [];      // актуальні товари (з ціною/наявністю) + _count/_lastTs
+        let purchasedSort = 'count';  // count | date | name
+        let purchasedLoaded = false;
+
+        function togglePurchased() {
+            const body = document.getElementById('purchased-body');
+            const folder = document.getElementById('purch-folder');
+            const willOpen = body.style.display === 'none';
+            body.style.display = willOpen ? 'block' : 'none';
+            folder.classList.toggle('open', willOpen);
+            if (willOpen && !purchasedLoaded) loadPurchased();
+        }
+
+        // Агрегуємо товари з усіх замовлень: дедуп за назвою, рахуємо к-сть покупок і останню дату.
+        function aggregatePurchases(orders) {
+            const map = {};
+            for (const o of (orders || [])) {
+                const ts = Date.parse(o.created_at) || 0;
+                for (const p of (o.products || [])) {
+                    const key = String(p.name || '').trim().toLowerCase();
+                    if (!key) continue;
+                    if (!map[key]) {
+                        map[key] = { name: p.name, sku: p.sku || '', prom_id: p.prom_id || '', count: 0, lastTs: 0 };
+                    }
+                    map[key].count += 1;
+                    if (ts >= map[key].lastTs) {
+                        map[key].lastTs = ts;
+                        if (p.sku) map[key].sku = p.sku;
+                        if (p.prom_id) map[key].prom_id = p.prom_id;
+                    }
+                }
+            }
+            return Object.values(map);
+        }
+
+        async function loadPurchased() {
+            purchasedLoaded = true;
+            const wrap = document.getElementById('purchased-wrap');
+            // Беремо найчастіше куповані (обмежуємо, щоб не смикати сервер сотнями запитів)
+            const agg = aggregatePurchases(lastOrders).sort((a, b) => b.count - a.count).slice(0, 60);
+            if (!agg.length) {
+                wrap.innerHTML = '<div class="state-box"><p>Тут зʼявляться товари, які ви купували</p></div>';
+                return;
+            }
+            wrap.innerHTML = '<div class="state-box"><div class="spinner"></div><p>Оновлюємо ціни й наявність…</p></div>';
+            // Тягнемо актуальні дані (ціна + наявність + фото) — як у кошику/повторі замовлення.
+            const fresh = await Promise.all(agg.map(async a => {
+                try {
+                    const f = await fetchFreshProduct({ id: a.prom_id || a.sku, sku: a.sku, name: a.name });
+                    return f ? Object.assign({}, f, { _count: a.count, _lastTs: a.lastTs }) : null;
+                } catch (e) { return null; }
+            }));
+            purchasedItems = fresh.filter(Boolean);
+            renderPurchased();
+        }
+
+        function purchDateLabel(ts) {
+            if (!ts) return '';
+            try { return new Date(ts).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: '2-digit' }); }
+            catch (e) { return ''; }
+        }
+
+        function renderPurchased() {
+            const wrap = document.getElementById('purchased-wrap');
+            if (!purchasedItems.length) {
+                wrap.innerHTML = '<div class="state-box"><p>Не вдалося знайти куплені товари в каталозі</p></div>';
+                return;
+            }
+            const items = purchasedItems.slice();
+            if (purchasedSort === 'name')      items.sort((a, b) => String(a.name).localeCompare(String(b.name), 'uk'));
+            else if (purchasedSort === 'date') items.sort((a, b) => b._lastTs - a._lastTs);
+            else                               items.sort((a, b) => b._count - a._count || b._lastTs - a._lastTs);
+            // Бейдж на плитці: для сортування за датою показуємо дату, інакше — к-сть покупок.
+            items.forEach(p => { p._badge = (purchasedSort === 'date') ? purchDateLabel(p._lastTs) : ('куплено ' + p._count + '×'); });
+            wrap.innerHTML = '<div class="products-grid">' + items.map(buildTileHTML).join('') + '</div>';
+            // Фото для не-iradius (Prom) товарів — як у каталозі (iradius малюються напряму).
+            items.forEach(p => loadTileImage(p));
+        }
+
+        function setPurchSort(mode) {
+            purchasedSort = mode;
+            document.querySelectorAll('#purch-sort button').forEach(b =>
+                b.classList.toggle('active', b.getAttribute('data-sort') === mode));
+            renderPurchased();
         }
 
         // Відкриває трекінг НП. Формат через # ламається у WebView (ієрогліфи),
