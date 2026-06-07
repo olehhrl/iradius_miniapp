@@ -3746,12 +3746,29 @@
                         <input class="form-input" id="f-r-phone" placeholder="Телефон отримувача +380... *" value="${savedData.rPhone || ''}" oninput="validatePhone(this, 'e-r-phone')">
                         <div class="form-error" id="e-r-phone">Невірний формат. Приклад: +380671234567</div>
                     </div>
+                    ${total >= 2000 ? `
+                    <label style="display:flex;align-items:center;gap:8px;margin:8px 2px 2px;font-size:13px;color:var(--text);cursor:pointer;">
+                        <input type="checkbox" id="f-need-invoice" ${savedData.needInvoice ? 'checked' : ''} onchange="toggleInvoiceFields(this.checked)" style="width:17px;height:17px;accent-color:var(--teal);">
+                        🧾 Потрібен офіційний рахунок (ФОП/ТОВ)
+                    </label>
+                    <div id="invoice-fields" style="display:${savedData.needInvoice ? 'block' : 'none'};margin-top:4px;">
+                        <input class="form-input" id="f-invoice-company" placeholder="Назва ФОП / ТОВ *" value="${(savedData.invoiceCompany || '').replace(/"/g,'&quot;')}">
+                        <div class="form-error" id="e-invoice-company">Вкажіть назву ФОП / ТОВ</div>
+                        <div style="font-size:11px;color:var(--text-muted);line-height:1.45;margin:4px 2px 2px;">
+                            ⚠️ Рахунок виставляється на суму замовлення, але <b>позиції в рахунку можуть відрізнятися</b> від вашого кошика — підбираються з нашого асортименту під цю суму. Послуга доступна для замовлень від 2000 грн.
+                        </div>
+                    </div>` : ''}
                     <button class="btn-order-submit" onclick="submitOrder()">✅ Оформити замовлення</button>
                 </div>`;
         }
 
         function toggleRecipientFields(show) {
             const box = document.getElementById('recipient-fields');
+            if (box) box.style.display = show ? 'block' : 'none';
+        }
+
+        function toggleInvoiceFields(show) {
+            const box = document.getElementById('invoice-fields');
             if (box) box.style.display = show ? 'block' : 'none';
         }
 
@@ -4013,12 +4030,27 @@
                 if (rErr) { showToast('Заповніть дані отримувача правильно'); return; }
             }
 
+            // === ОФІЦІЙНИЙ РАХУНОК (ФОП/ТОВ) ===
+            const needInvoiceEl = document.getElementById('f-need-invoice');
+            const needInvoice = !!(needInvoiceEl && needInvoiceEl.checked);
+            let invoiceCompany = '';
+            if (needInvoice) {
+                invoiceCompany = (document.getElementById('f-invoice-company').value || '').trim();
+                if (!invoiceCompany) {
+                    document.getElementById('f-invoice-company').classList.add('error');
+                    document.getElementById('e-invoice-company').classList.add('show');
+                    showToast('Вкажіть назву ФОП / ТОВ для рахунку');
+                    return;
+                }
+            }
+
             // Зберігаємо дані клієнта (включно з новими полями доставки)
             localStorage.setItem('ir_order_data', JSON.stringify({
                 name, surname, phone, city, np, comment,
                 cityRef, settlementRef, warehouseRef, streetRef,
                 deliveryType, streetName, house, apartment,
-                otherRecipient, rName, rSurname, rPhone
+                otherRecipient, rName, rSurname, rPhone,
+                needInvoice, invoiceCompany
             }));
 
             const btn = document.querySelector('.btn-order-submit');
@@ -4064,6 +4096,8 @@
                 recipient_name: rName || '',
                 recipient_surname: rSurname || '',
                 recipient_phone: rPhone || '',
+                need_invoice: needInvoice || false,
+                invoice_company: invoiceCompany || '',
                 items: cart.map(i => ({ id: i.id, sku: i.sku || '', name: i.name, price: i.price, qty: i.qty, image: i.image || '' })),
                 total: cart.reduce((s, i) => s + i.price * i.qty, 0),
                 tg_user_id: getTgUserId(),
