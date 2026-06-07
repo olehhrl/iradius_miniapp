@@ -49,6 +49,9 @@
         body.dark .form-input::placeholder { color: #9aa0a6 !important; }
         /* Випадайки міста/відділення лишаються на білому тлі — робимо їх текст темним */
         body.dark .autocomplete-item { color: #1A1A1A; }
+        /* Історія пошуку: коробка має зашитий білий фон — у темній темі робимо її темною,
+           щоб світлий текст запиту (var(--text)) був видимий */
+        body.dark #search-history-box { background: var(--white) !important; }
 
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
