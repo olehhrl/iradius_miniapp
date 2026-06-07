@@ -114,6 +114,9 @@
         .tile-img { width: 100%; height: 100%; object-fit: contain; padding: 8px; }
         .tile-img-placeholder { font-size: 48px; }
         .tile-badge { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,0.72); color: #fff; font-size: 10px; font-weight: 700; padding: 3px 7px; border-radius: 20px; z-index: 2; white-space: nowrap; }
+        .theme-seg { display: flex; gap: 6px; }
+        .theme-seg button { flex: 1; padding: 9px 6px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--white); font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; }
+        .theme-seg button.active { background: var(--teal); border-color: var(--teal); color: #fff; }
         .profile-tabs { display: flex; gap: 8px; padding: 12px 14px 4px; }
         .profile-tab { flex: 1; padding: 10px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--white); font-size: 13px; font-weight: 700; color: var(--text-muted); cursor: pointer; transition: all 0.15s; }
         .profile-tab.active { background: var(--teal); border-color: var(--teal); color: #fff; }
@@ -534,19 +537,14 @@
                 </div>
             </div>
 
-            <!-- Темна тема -->
+            <!-- Тема -->
             <div style="background:var(--bg);border-radius:12px;padding:14px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                    <div>
-                        <div style="font-size:14px;font-weight:700;color:var(--text);">🌙 Темна тема</div>
-                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Менше навантаження на очі, особливо ввечері.</div>
-                    </div>
-                    <label style="position:relative;display:inline-block;width:50px;height:28px;flex-shrink:0;cursor:pointer;">
-                        <input type="checkbox" id="toggle-dark-theme" onchange="toggleDarkTheme(this.checked)" style="opacity:0;width:0;height:0;">
-                        <span id="toggle-dark-slider" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:28px;transition:.2s;">
-                            <span style="position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></span>
-                        </span>
-                    </label>
+                <div style="font-size:14px;font-weight:700;color:var(--text);">🎨 Тема</div>
+                <div style="font-size:11px;color:var(--text-muted);margin:2px 0 10px;">«Авто» підлаштовується під тему Telegram/телефону.</div>
+                <div class="theme-seg" id="theme-seg">
+                    <button data-theme="light" onclick="setTheme('light')">☀️ Світла</button>
+                    <button data-theme="dark" onclick="setTheme('dark')">🌙 Темна</button>
+                    <button data-theme="auto" onclick="setTheme('auto')">🌗 Авто</button>
                 </div>
             </div>
 
@@ -3462,24 +3460,24 @@
                 html += `<div style="margin:10px 14px;padding:12px 14px;background:#fff8e1;border:1.5px solid #ffc107;border-radius:12px;font-size:13px;color:#795548;">
                     ⚠️ Мінімальна сума замовлення — <b>${MIN_ORDER} грн</b>. Додайте товарів на <b>${need} грн</b>, щоб виконати мінімум.
                 </div>`;
-            } else if (total >= 9000 && total < FREE_SHIPPING) {
-                // "Підказка" коли клієнт майже дотягнув до безкоштовної доставки
+            } else if (total < FREE_SHIPPING) {
+                // Завжди показуємо, скільки лишилось добрати до безкоштовної доставки
                 const need = FREE_SHIPPING - total;
-                const percent = Math.round((total / FREE_SHIPPING) * 100);
+                const percent = Math.max(2, Math.round((total / FREE_SHIPPING) * 100));
                 html += `<div style="margin:10px 14px;padding:12px 14px;background:var(--green-light);border:1.5px solid var(--green);border-radius:12px;font-size:13px;color:var(--text);">
-                    🚚 До <b>безкоштовної доставки</b> залишилось <b>${need} грн</b>!
+                    🚚 Додайте товарів ще на <b>${need} грн</b> — і доставка стане <b>безкоштовною</b>!
                     <div style="margin-top:8px;height:6px;background:rgba(0,0,0,0.08);border-radius:3px;overflow:hidden;">
                         <div style="height:100%;width:${percent}%;background:var(--green);transition:width .3s;"></div>
                     </div>
-                    <div style="margin-top:8px;font-size:11px;color:var(--text-muted);line-height:1.45;">
-                        ⚠️ Умова: 1-2 місця загальною вагою <b>до 30 кг</b>. Якщо замовлення великогабаритне — доставка оплачується окремо.
+                    <div style="margin-top:8px;font-size:10px;color:var(--text-muted);line-height:1.4;">
+                        Безкоштовна доставка від ${FREE_SHIPPING} грн: 1–2 місця загальною вагою до 30 кг. Великогабаритні чи важчі замовлення — доставка оплачується окремо.
                     </div>
                 </div>`;
-            } else if (total >= FREE_SHIPPING) {
+            } else {
                 html += `<div style="margin:10px 14px;padding:12px 14px;background:var(--green-light);border:1.5px solid var(--green);border-radius:12px;font-size:13px;color:var(--text);">
                     <div style="text-align:center;font-weight:700;">✅ Доставка <b>безкоштовна</b> 🎉</div>
-                    <div style="margin-top:6px;font-size:11px;color:var(--text-muted);text-align:center;line-height:1.45;">
-                        ⚠️ Умова: 1-2 місця загальною вагою <b>до 30 кг</b>. Великогабаритні замовлення — доставка платна.
+                    <div style="margin-top:6px;font-size:10px;color:var(--text-muted);text-align:center;line-height:1.4;">
+                        Безкоштовна доставка від ${FREE_SHIPPING} грн: 1–2 місця загальною вагою до 30 кг. Великогабаритні чи важчі замовлення — доставка оплачується окремо.
                     </div>
                 </div>`;
             }
@@ -4204,10 +4202,10 @@
             try { Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch(e) {}
         }
 
-        // --- ТЕМНА ТЕМА ---
+        // --- ТЕМА: світла / темна / авто ---
+        // Низькорівневе застосування (тільки вмикає/вимикає темний вигляд).
         function applyDarkTheme(on) {
             document.body.classList.toggle('dark', !!on);
-            _syncToggle('toggle-dark-slider', 'toggle-dark-theme', on);
             // Telegram WebApp header color — щоб не "виглядав" зі статус-бару
             try {
                 if (window.Telegram && Telegram.WebApp && Telegram.WebApp.setHeaderColor) {
@@ -4218,16 +4216,41 @@
                 }
             } catch (e) {}
         }
-        function toggleDarkTheme(on) {
-            localStorage.setItem('ir_dark_theme', on ? '1' : '0');
-            applyDarkTheme(on);
-            try { Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch(e) {}
+        // Чи темна система (Telegram або ОС телефону) — для режиму «Авто».
+        function _systemPrefersDark() {
+            try { if (window.Telegram && Telegram.WebApp && Telegram.WebApp.colorScheme) return Telegram.WebApp.colorScheme === 'dark'; } catch (e) {}
+            try { return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches); } catch (e) {}
+            return false;
         }
+        // Поточний вибір: 'light' | 'dark' | 'auto' (із міграцією зі старого ir_dark_theme).
+        function getThemePref() {
+            let t = localStorage.getItem('ir_theme');
+            if (!t) {
+                const old = localStorage.getItem('ir_dark_theme');
+                t = (old === '1') ? 'dark' : (old === '0') ? 'light' : 'auto';
+            }
+            return (t === 'light' || t === 'dark') ? t : 'auto';
+        }
+        function applyTheme() {
+            const pref = getThemePref();
+            const dark = (pref === 'auto') ? _systemPrefersDark() : (pref === 'dark');
+            applyDarkTheme(dark);
+            document.querySelectorAll('#theme-seg button').forEach(b =>
+                b.classList.toggle('active', b.getAttribute('data-theme') === pref));
+        }
+        function setTheme(pref) {
+            localStorage.setItem('ir_theme', pref);
+            applyTheme();
+            try { Telegram.WebApp.HapticFeedback.impactOccurred('light'); } catch (e) {}
+        }
+        // У режимі «Авто» реагуємо на зміну теми Telegram/ОС наживо.
+        try { if (window.Telegram && Telegram.WebApp && Telegram.WebApp.onEvent) Telegram.WebApp.onEvent('themeChanged', () => { if (getThemePref() === 'auto') applyTheme(); }); } catch (e) {}
+        try { if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (getThemePref() === 'auto') applyTheme(); }); } catch (e) {}
 
         // --- INIT ---
         // Налаштування — застосовуємо ДО першого рендеру, щоб не блимало
         applyLargeText(localStorage.getItem('ir_large_text') === '1');
-        applyDarkTheme(localStorage.getItem('ir_dark_theme') === '1');
+        applyTheme();
         // Підвантажуємо підписки користувача у фоні (для синхронізації кнопки 🔔)
         loadMyReminders();
         updateBadges();
