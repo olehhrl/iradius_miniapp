@@ -571,6 +571,33 @@
         </div>
     </div>
 
+    <!-- FAQ: КІЛЬКА КОШИКІВ -->
+    <div id="cart-help-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:760;align-items:flex-end;justify-content:center;" onclick="closeCartHelp()">
+        <div style="background:var(--white);border-radius:20px 20px 0 0;padding:22px 18px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto;" onclick="event.stopPropagation()">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                <div style="font-size:18px;font-weight:800;color:var(--text);">🛒 Кілька кошиків</div>
+                <button onclick="closeCartHelp()" style="background:none;border:none;font-size:22px;color:var(--text-muted);cursor:pointer;line-height:1;padding:0 4px;">✕</button>
+            </div>
+            <div style="font-size:14px;color:var(--text);line-height:1.6;">
+                <p style="margin:0 0 10px;">Можна вести <b>кілька окремих кошиків</b> одночасно — це зручно, щоб:</p>
+                <ul style="margin:0 0 14px;padding-left:18px;">
+                    <li>готувати <b>кілька замовлень паралельно</b> (напр. «Кабінет 1», «Кабінет 2»);</li>
+                    <li>тримати <b>постійний список</b> для регулярних закупівель;</li>
+                    <li>робити окремі замовлення <b>на різних отримувачів</b>.</li>
+                </ul>
+                <div style="font-weight:700;margin-bottom:6px;">Як користуватись:</div>
+                <ul style="margin:0 0 14px;padding-left:18px;">
+                    <li>Угорі кошика — вкладки з назвами. Тапніть, щоб <b>перемкнутись</b>.</li>
+                    <li><b>＋</b> — новий кошик, <b>✏️</b> — перейменувати, <b>🗑</b> — видалити.</li>
+                    <li>Товари додаються в той кошик, що зараз <b>обраний</b>.</li>
+                    <li>Кожен кошик <b>оформлюється окремо</b>.</li>
+                </ul>
+                <div style="font-size:12px;color:var(--text-muted);">ℹ️ Кошики зберігаються на цьому пристрої.</div>
+            </div>
+            <button onclick="closeCartHelp()" style="width:100%;margin-top:16px;padding:13px;background:var(--teal);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;">Зрозуміло</button>
+        </div>
+    </div>
+
     <!-- FAVORITES -->
     <div id="page-favorites">
         <div id="favorites-container"></div>
@@ -3365,6 +3392,8 @@
             setTimeout(() => { try { inp.focus(); } catch (e) {} }, 50);
         }
         function closeRenameCart() { document.getElementById('rename-cart-modal').style.display = 'none'; }
+        function openCartHelp() { document.getElementById('cart-help-modal').style.display = 'flex'; }
+        function closeCartHelp() { document.getElementById('cart-help-modal').style.display = 'none'; }
         function saveRenameCart() {
             const c = carts.find(x => x.id === _renameCartId);
             if (c) {
@@ -3388,6 +3417,7 @@
             h += '<div class="cart-actions-row">'
                + `<button onclick="renameCart('${activeCartId}')">✏️ Перейменувати</button>`
                + (carts.length > 1 ? `<button onclick="deleteCart('${activeCartId}')">🗑 Видалити кошик</button>` : '')
+               + '<button onclick="openCartHelp()" style="margin-left:auto;">ℹ️ Кілька кошиків?</button>'
                + '</div>';
             return h;
         }
