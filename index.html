@@ -1940,12 +1940,16 @@
             img.src = SERVER_URL + '/image?url=' + encodeURIComponent(raw);
         }
 
-        // Якіснішe фото для плитки каталогу. Товарні фото iradius мають лише /small/
-        // (мутні ~9KB) та оригінал (~700KB). Беремо оригінал, але стискаємо на проксі
-        // до 400px WebP (~30-50KB): помітно різкіше за /small/, але легке й кешується.
-        function catalogImgSrc(rawUrl) {
-            if (rawUrl && rawUrl.indexOf('https://iradius.com.ua/assets/images/products/') === 0 && rawUrl.indexOf('/small/') !== -1) {
-                return SERVER_URL + '/image?w=400&url=' + encodeURIComponent(rawUrl.replace('/small/', '/'));
+        // Якіснішe фото для плитки каталогу. Товарні фото iradius мають мутний /small/
+        // (~9KB) і повнорозмірний оригінал. Беремо оригінал, але стискаємо на проксі до
+        // 400px WebP (~13KB): помітно різкіше за /small/, але легке й кешується на диску.
+        // Найнадійніше джерело — main_image_full з API (реальний URL, правильне розширення),
+        // бо проста заміна /small/ → / дає 404 коли оригінал не .jpg (напр. .png).
+        function catalogImgSrc(rawUrl, fullUrl) {
+            const orig = fullUrl
+                || (rawUrl && rawUrl.indexOf('/small/') !== -1 ? rawUrl.replace('/small/', '/') : '');
+            if (orig && orig.indexOf('https://iradius.com.ua/assets/images/products/') === 0) {
+                return SERVER_URL + '/image?w=400&url=' + encodeURIComponent(orig);
             }
             return rawUrl;
         }
@@ -1975,7 +1979,7 @@
             html += '<div class="tile-img-wrap">';
             // Швидкий шлях: iradius-фото вантажаться напряму браузером (HTTP/2, кеш, паралельно).
             if (rawImg2 && rawImg2.indexOf('https://iradius.com.ua/') === 0) {
-                html += '<img class="tile-img" id="img-' + p.id + '" src="' + catalogImgSrc(rawImg2) + '" data-small="' + rawImg2 + '" data-pid="' + p.id + '" loading="lazy" decoding="async" onerror="catalogImgError(this)">';
+                html += '<img class="tile-img" id="img-' + p.id + '" src="' + catalogImgSrc(rawImg2, p.main_image_full) + '" data-small="' + rawImg2 + '" data-pid="' + p.id + '" loading="lazy" decoding="async" onerror="catalogImgError(this)">';
             } else {
                 html += '<div class="tile-img-placeholder" id="img-' + p.id + '">🦷</div>';
             }
