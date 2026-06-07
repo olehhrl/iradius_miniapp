@@ -1986,6 +1986,14 @@
             } catch (e) { return ''; }
         }
 
+        // Безпечне екранування тексту для вставки в HTML (назви відділень/поштоматів
+        // можуть містити лапки " ' та інші спецсимволи).
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
         async function requestRestockTile(id, sku, name, btn) {
             btn.disabled = true; btn.textContent = '…';
             try {
@@ -2504,6 +2512,29 @@
         const tgInitData = (window.Telegram && Telegram.WebApp && Telegram.WebApp.initData) || '';
         let verifiedPhone = '';   // підтверджений власний номер клієнта
 
+        // Запамʼятовуємо підтверджений номер локально, щоб не просити ділитися щоразу.
+        // Особливо важливо в Telegram Web/Desktop, де initData порожній і /me недоступний.
+        function _persistVerifiedPhone() {
+            try {
+                if (!verifiedPhone) return;
+                localStorage.setItem('ir_verified_phone', verifiedPhone);
+                const uid = getTgUserId();
+                if (uid) localStorage.setItem('ir_verified_phone_uid', String(uid));
+            } catch (e) {}
+        }
+        (function _restoreVerifiedPhone() {
+            try {
+                const sp = localStorage.getItem('ir_verified_phone') || '';
+                if (!sp) return;
+                const uid = getTgUserId();
+                const sUid = localStorage.getItem('ir_verified_phone_uid') || '';
+                // Якщо знаємо поточний tg id і він НЕ збігається зі збереженим —
+                // це інший акаунт на тому ж пристрої, не підставляємо чужий номер.
+                if (uid && sUid && String(uid) !== String(sUid)) return;
+                verifiedPhone = sp;
+            } catch (e) {}
+        })();
+
         // Надійний детектор «я всередині Telegram»: поза Telegram platform === 'unknown'.
         function inTelegram() {
             try {
@@ -2517,7 +2548,7 @@
             try {
                 const r = await fetch(SERVER_URL + '/me?init_data=' + encodeURIComponent(tgInitData), { headers: H });
                 const d = await r.json();
-                if (d && d.ok && d.phone) verifiedPhone = d.phone;
+                if (d && d.ok && d.phone) { verifiedPhone = d.phone; _persistVerifiedPhone(); }
                 return d;
             } catch { return null; }
         }
@@ -2540,6 +2571,7 @@
                                 let ph = String(c.phone_number).replace(/\s/g, '');
                                 if (!ph.startsWith('+')) ph = '+' + ph;
                                 verifiedPhone = ph;
+                                _persistVerifiedPhone();
                                 showToast('Дякуємо!');
                                 // невелика пауза — щоб бот встиг зберегти контакт (для нових клієнтів)
                                 setTimeout(done, 1300);
@@ -3409,6 +3441,7 @@
         }
 
         // --- NOVA POSHTA AUTOCOMPLETE ---
+        let warehouseResults = [];   // останній список складів (вибір за індексом)
         let cityRef = null;          // DeliveryCity — для getWarehouses (CityRef)
         let settlementRef = null;    // Ref — для searchSettlementStreets (SettlementRef)
         let warehouseRef = null;
@@ -3480,9 +3513,10 @@
                 const res = await fetch(SERVER_URL + '/np/warehouses?city_ref=' + cityRef + '&q=&kind=' + deliveryType, { headers: H });
                 const data = await res.json();
                 const results = data.results || [];
+                warehouseResults = results;
                 if (!results.length) { list.style.display = 'none'; return; }
-                list.innerHTML = results.map(r =>
-                    '<div class="autocomplete-item" onclick="selectWarehouse(\'' + r.ref + '\', \'' + r.name.replace(/\'/g, "\\'") + '\')">' + r.name + '</div>'
+                list.innerHTML = results.map((r, i) =>
+                    '<div class="autocomplete-item" onclick="selectWarehouse(' + i + ')">' + escapeHtml(r.name) + '</div>'
                 ).join('');
                 list.style.display = 'block';
             } catch { list.style.display = 'none'; }
@@ -3497,18 +3531,21 @@
                     const res = await fetch(SERVER_URL + '/np/warehouses?city_ref=' + cityRef + '&q=' + encodeURIComponent(q) + '&kind=' + deliveryType, { headers: H });
                     const data = await res.json();
                     const results = data.results || [];
+                    warehouseResults = results;
                     if (!results.length) { list.style.display = 'none'; return; }
-                    list.innerHTML = results.map(r =>
-                        '<div class="autocomplete-item" onclick="selectWarehouse(\'' + r.ref + '\', \'' + r.name.replace(/\'/g, "\\'") + '\')">' + r.name + '</div>'
+                    list.innerHTML = results.map((r, i) =>
+                        '<div class="autocomplete-item" onclick="selectWarehouse(' + i + ')">' + escapeHtml(r.name) + '</div>'
                     ).join('');
                     list.style.display = 'block';
                 } catch { list.style.display = 'none'; }
             }, 300);
         }
 
-        function selectWarehouse(ref, name) {
-            warehouseRef = ref;
-            document.getElementById('f-np').value = name;
+        function selectWarehouse(idx) {
+            const w = warehouseResults[idx];
+            if (!w) return;
+            warehouseRef = w.ref;
+            document.getElementById('f-np').value = w.name;
             document.getElementById('np-list').style.display = 'none';
         }
 
