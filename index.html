@@ -2773,13 +2773,60 @@
             window.open(shareUrl, '_blank');
         }
 
+        // --- 13.11.2026: «ОБРАНЕ» СПІЛЬНЕ З КАБІНЕТОМ САЙТУ ---
+        // Ключ — підтверджений номер (той, яким поділились у боті). Сервер /fav тримає список у кабінеті сайту
+        // (або в себе, поки кабінету з цим номером немає). Перший раз на пристрої — обʼєднуємо локальне з серверним,
+        // далі сервер — головний (видалене на сайті зникає і тут). Старі Prom-id (7+ цифр) лишаються лише локально.
+        const FAV_SYNC_KEY = 'ir_fav_synced';
+        let _favPulledAt = 0;
+        function _favCanSync() { return inTelegram() && !!(tgInitData || verifiedPhone); }
+        function _isSiteId(id) { return /^\d{1,6}$/.test(String(id)); }
+        async function favServer(op, extra) {
+            if (!_favCanSync()) return null;
+            try {
+                const body = Object.assign({ init_data: tgInitData || '', phone: verifiedPhone || '', op: op }, extra || {});
+                const r = await fetch(SERVER_URL + '/fav', { method: 'POST', headers: { ...H, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                const d = await r.json();
+                return (d && d.ok && Array.isArray(d.fav)) ? d.fav : null;
+            } catch (e) { return null; }
+        }
+        function _favApplyServer(ids) {
+            if (!Array.isArray(ids)) return false;
+            const byId = {};
+            favorites.forEach(f => { byId[String(f.id)] = f; });
+            const legacy = favorites.filter(f => !_isSiteId(f.id));
+            const next = ids.map(id => byId[String(id)] || { id: String(id), sku: '', name: '', image: '', price: null, presence: 'available' }).concat(legacy);
+            const changed = next.map(f => String(f.id)).join(',') !== favorites.map(f => String(f.id)).join(',');
+            favorites = next;
+            localStorage.setItem('ir_favorites', JSON.stringify(favorites));
+            if (changed) updateBadges();
+            return changed;
+        }
+        async function favPullFromServer() {
+            if (!_favCanSync()) return false;
+            const me = String(getTgUserId() || verifiedPhone || '1');
+            const first = localStorage.getItem(FAV_SYNC_KEY) !== me;
+            const ids = await favServer(first ? 'merge' : 'get',
+                first ? { ids: favorites.map(f => String(f.id)).filter(_isSiteId) } : null);
+            if (!ids) return false;
+            if (first) localStorage.setItem(FAV_SYNC_KEY, me);
+            _favPulledAt = Date.now();
+            return _favApplyServer(ids);
+        }
+        function favServerSet(id, on) {
+            if (!_isSiteId(id) || localStorage.getItem(FAV_SYNC_KEY) === null) return;
+            _favPulledAt = Date.now();   // щоб паралельне «get» не повернуло щойно прибране
+            favServer('set', { id: Number(id), on: !!on }).then(ids => { if (ids) { _favPulledAt = Date.now(); _favApplyServer(ids); } });
+        }
+
         // --- FAVORITES ---
         function toggleFavTile(id, sku, name, image, price, presence) {
             const idx = favorites.findIndex(f => String(f.id) === String(id));
             const btn = document.getElementById('fav-' + id);
             if (idx === -1) {
                 // Зберігаємо повний снапшот — фото гарантовано буде в обраному
-                favorites.push({
+                // (13.11.2026: новий — першим, як в «Обраному» сайту)
+                favorites.unshift({
                     id: String(id), sku: sku || '', name: name || '',
                     image: image || '', price: (price != null ? price : null),
                     presence: presence || 'available'
@@ -2820,6 +2867,7 @@
             }
             localStorage.setItem('ir_favorites', JSON.stringify(favorites));
             updateBadges();
+            favServerSet(id, idx === -1);   // 13.11.2026: і в кабінет сайту
         }
 
         function toggleFavorite() {
@@ -3299,6 +3347,7 @@
             if (!confirm('Очистити обране?')) return;
             favorites = [];
             localStorage.setItem('ir_favorites', JSON.stringify(favorites));
+            if (localStorage.getItem(FAV_SYNC_KEY) !== null) favServer('clear');   // 13.11.2026: і в кабінеті сайту
             updateBadges();
             showToast('Обране очищено');
             showFavorites();
@@ -3455,6 +3504,11 @@
             document.getElementById('btnBack').style.display = 'block';
             document.getElementById('headerTitle').textContent = '❤️ Обране';
             const container = document.getElementById('favorites-container');
+            // 13.11.2026: свіже з кабінету сайту (не частіше ніж раз на 15 с, чекаємо не довше 2.5 с)
+            if (_favCanSync() && Date.now() - _favPulledAt > 15000) {
+                if (!favorites.length) container.innerHTML = '<div class="state-box"><div class="spinner"></div></div>';
+                await Promise.race([favPullFromServer(), new Promise(r => setTimeout(r, 2500))]);
+            }
             if (!favorites.length) { container.innerHTML = '<div class="state-box"><div class="icon">♡</div><p>Ви ще нічого не додали в обране</p></div>'; return; }
 
             // Скелетон поки чекаємо batch resolve — як у каталозі. Краще порожніх плиток
@@ -3740,6 +3794,7 @@
                 saveCart();
             }
             await fetchMe();   // підтягуємо підтверджений номер для оформлення
+            favPullFromServer().catch(() => {});   // 13.11.2026: обране спільне з кабінетом сайту
             renderCart();
         }
 
